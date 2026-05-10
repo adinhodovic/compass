@@ -49,7 +49,12 @@ var dummyBcryptHash = []byte(
 //
 // /static/*, /health, and /metrics (when registered) are exempt — they need
 // to be reachable for assets, probes, and Prometheus scrapes.
-func authMiddleware(next http.Handler, cfg config.AuthConfig, logger *slog.Logger) http.Handler {
+func authMiddleware(
+	next http.Handler,
+	cfg config.AuthConfig,
+	trustedProxies []trustedProxyMatcher,
+	logger *slog.Logger,
+) http.Handler {
 	if len(cfg.Basic.Users) > 0 {
 		return basicAuthMiddleware(next, cfg, logger)
 	}
@@ -59,7 +64,7 @@ func authMiddleware(next http.Handler, cfg config.AuthConfig, logger *slog.Logge
 				"auth.required is enabled without auth.trusted_proxies; any caller can spoof user headers if Compass is reachable directly",
 			)
 		}
-		return forwardAuthMiddleware(next, cfg, logger)
+		return forwardAuthMiddleware(next, cfg, trustedProxies, logger)
 	}
 	return next
 }
@@ -91,14 +96,9 @@ func basicAuthMiddleware(
 func forwardAuthMiddleware(
 	next http.Handler,
 	cfg config.AuthConfig,
+	matchers []trustedProxyMatcher,
 	_ *slog.Logger,
 ) http.Handler {
-	matchers, err := compileTrustedProxies(cfg.TrustedProxies)
-	if err != nil {
-		// Bail loudly — a misconfigured allowlist would silently allow
-		// requests through, which is worse than a startup crash.
-		panic(fmt.Sprintf("auth.trusted_proxies: %v", err))
-	}
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if isAuthExempt(r.URL.Path) {
 			next.ServeHTTP(w, r)

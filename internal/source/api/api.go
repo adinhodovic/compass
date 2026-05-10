@@ -16,6 +16,8 @@ import (
 	"github.com/tidwall/gjson"
 )
 
+const maxResponseBytes = 10 << 20
+
 type Source struct {
 	name     string
 	endpoint string
@@ -75,9 +77,16 @@ func (a Source) Load(ctx context.Context) ([]compass.Service, error) {
 		return nil, fmt.Errorf("source %s: status %d from %s", a.name, resp.StatusCode, a.endpoint)
 	}
 
-	payload, err := io.ReadAll(resp.Body)
+	payload, err := io.ReadAll(io.LimitReader(resp.Body, maxResponseBytes+1))
 	if err != nil {
 		return nil, fmt.Errorf("source %s: read response: %w", a.name, err)
+	}
+	if len(payload) > maxResponseBytes {
+		return nil, fmt.Errorf(
+			"source %s: read response: response exceeds %d bytes",
+			a.name,
+			maxResponseBytes,
+		)
 	}
 
 	root := gjsonRoot(payload, a.mapping.ItemsPath)

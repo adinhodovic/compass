@@ -262,7 +262,7 @@ func (r *Registry) refreshEntry(ctx context.Context, e *entryState) error {
 	if err != nil {
 		msg := err.Error()
 		e.lastErr.Store(&msg)
-		metrics.ObserveSourceRefresh(e.src.Name(), 0, time.Since(start), err)
+		metrics.ObserveSourceRefresh(sourceMetricLabel(e.src), 0, time.Since(start), err)
 		return err
 	}
 	out := make([]compass.Service, 0, len(loaded))
@@ -274,10 +274,14 @@ func (r *Registry) refreshEntry(ctx context.Context, e *entryState) error {
 	}
 	e.services.Store(&out)
 	e.lastErr.Store(nil)
-	metrics.ObserveSourceRefresh(e.src.Name(), len(out), time.Since(start), nil)
+	metrics.ObserveSourceRefresh(sourceMetricLabel(e.src), len(out), time.Since(start), nil)
 	r.logSource(ctx, slog.LevelInfo, "Source load complete", e.src, slog.Int("services", len(out)))
 	r.aggregate()
 	return nil
+}
+
+func sourceMetricLabel(src source.Source) string {
+	return src.Type() + "/" + src.Name()
 }
 
 func (e *entryState) snapshot() []compass.Service {
@@ -496,7 +500,7 @@ func (r *Registry) normalize(
 		service.SourceType = fallbackType
 	}
 	if service.ID == "" {
-		service.ID = slug.Make(service.Source + "-" + service.Name)
+		service.ID = slug.Make(service.SourceType + "-" + service.Source + "-" + service.Name)
 	}
 	if service.Metadata == nil {
 		service.Metadata = map[string]any{}

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/adinhodovic/compass/internal/compass"
@@ -65,7 +66,11 @@ const DefaultRefreshInterval = 5 * time.Minute
 
 func BuildSources(cfg config.Config, client *http.Client) ([]Entry, error) {
 	entries := make([]Entry, 0, len(cfg.Services.Sources))
-	for _, sourceConfig := range cfg.Services.Sources {
+	seen := map[string]struct{}{}
+	for i, sourceConfig := range cfg.Services.Sources {
+		if err := validateSourceIdentity(i, sourceConfig, seen); err != nil {
+			return nil, err
+		}
 		var src Source
 		switch sourceConfig.Type {
 		case compass.SourceTypeStatic:
@@ -107,6 +112,24 @@ func BuildSources(cfg config.Config, client *http.Client) ([]Entry, error) {
 	}
 
 	return entries, nil
+}
+
+func validateSourceIdentity(
+	i int,
+	sourceConfig config.SourceConfig,
+	seen map[string]struct{},
+) error {
+	typeName := strings.TrimSpace(sourceConfig.Type)
+	name := strings.TrimSpace(sourceConfig.Name)
+	if name == "" {
+		return fmt.Errorf("services.sources[%d]: name is required", i)
+	}
+	identity := typeName + "/" + name
+	if _, ok := seen[identity]; ok {
+		return fmt.Errorf("services.sources[%d]: duplicate source identity %q", i, identity)
+	}
+	seen[identity] = struct{}{}
+	return nil
 }
 
 // parseRefreshInterval interprets a yaml duration string with these rules:

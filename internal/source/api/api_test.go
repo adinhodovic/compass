@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/adinhodovic/compass/internal/config"
@@ -45,6 +46,24 @@ func TestAPILoadMapsServices(t *testing.T) {
 	}
 	if services[0].PrimaryTag != "monitoring" {
 		t.Fatalf("expected primary tag to be mapped, got %q", services[0].PrimaryTag)
+	}
+}
+
+func TestAPILoadRejectsOversizedResponse(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write([]byte(strings.Repeat(" ", maxResponseBytes+1)))
+	}))
+	defer server.Close()
+
+	src := New(config.SourceConfig{
+		Name:     "custom",
+		Endpoint: server.URL,
+		Mapping:  config.MappingConfig{Fields: map[string]string{"name": "name", "url": "url"}},
+	}, server.Client())
+
+	_, err := src.Load(context.Background())
+	if err == nil || !strings.Contains(err.Error(), "response exceeds") {
+		t.Fatalf("expected oversized response error, got %v", err)
 	}
 }
 

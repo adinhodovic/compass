@@ -489,6 +489,19 @@ func validate(cfg *Config) error {
 	if len(cfg.Services.Sources) == 0 {
 		return fmt.Errorf("at least one services.source is required")
 	}
+	seenSources := map[string]struct{}{}
+	for i, source := range cfg.Services.Sources {
+		typeName := strings.TrimSpace(source.Type)
+		name := strings.TrimSpace(source.Name)
+		if name == "" {
+			return fmt.Errorf("services.sources[%d]: name is required", i)
+		}
+		identity := typeName + "/" + name
+		if _, ok := seenSources[identity]; ok {
+			return fmt.Errorf("services.sources[%d]: duplicate source identity %q", i, identity)
+		}
+		seenSources[identity] = struct{}{}
+	}
 	for _, pattern := range cfg.Services.Filters.ExcludeURLPatterns {
 		pattern = strings.TrimSpace(pattern)
 		if pattern == "" || !strings.ContainsAny(pattern, "*?[") {

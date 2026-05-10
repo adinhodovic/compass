@@ -38,7 +38,7 @@ shows the underlying message. Pair with the
 `compass_source_last_success_timestamp_seconds` metric:
 
 ```
-time() - compass_source_last_success_timestamp_seconds{source="my-cluster"} > 600
+time() - compass_source_last_success_timestamp_seconds{source="kubernetes/my-cluster"} > 600
 ```
 
 is a safe alert.

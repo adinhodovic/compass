@@ -57,9 +57,9 @@ URLs:
 - <http://localhost:8080/pages/architecture> — markdown page embedding live service cards via the `{{< services >}}` shortcode.
 - <http://localhost:8080/debug> — per-source health and the raw discovery output for each one.
 
-Skip a source by leaving its config block out or unsetting its env vars
-(Tailscale and Kubernetes are skipped automatically when their creds
-aren't set).
+Skip a source by leaving its config block out. Optional real-infrastructure
+sources in `deploy/dev/compass.yaml` are commented out when credentials are
+required.
 
 ## Layout
 
