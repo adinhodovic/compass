@@ -14,7 +14,7 @@
         {{if eq $logo.Kind "image"}}
         <div class="avatar shrink-0">
           <div class="w-12 sm:w-16 rounded-xl ring-2 ring-primary/20 ring-offset-2 ring-offset-base-100">
-            <img src="{{$logo.URL}}" alt="{{.Service.Name}} logo" loading="lazy">
+            <img src="{{$logo.URL}}" alt="{{.Service.Name}} logo" class="object-contain" loading="lazy">
           </div>
         </div>
         {{else}}
