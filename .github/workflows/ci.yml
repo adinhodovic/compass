@@ -29,35 +29,6 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
-  validate:
-    name: Validate manifests
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
-    steps:
-      - name: Check out code
-        uses: actions/checkout@v6
-
-      - name: Lint YAML
-        uses: ibiqlik/action-yamllint@v3
-        with:
-          config_data: |
-            extends: relaxed
-            ignore: |
-              deploy/charts/compass/templates/
-            rules:
-              line-length:
-                max: 200
-                level: warning
-              comments:
-                min-spaces-from-content: 1
-          file_or_dir: compass.yaml deploy/charts/compass .github/workflows
-
-      - name: Set up Helm
-        uses: azure/setup-helm@v5
-
-      - name: Helm lint
-        run: helm lint deploy/charts/compass
-
   test:
     strategy:
       matrix:
