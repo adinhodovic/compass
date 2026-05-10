@@ -33,11 +33,54 @@ func TestBuildSourcesRejectsUnsupportedType(t *testing.T) {
 	_, err := BuildSources(
 		config.Config{Services: config.ServicesConfig{Sources: []config.SourceConfig{{
 			Type: "bogus",
+			Name: "bogus",
 		}}}},
 		&http.Client{},
 	)
 	if err == nil {
 		t.Fatal("expected unsupported source type error")
+	}
+}
+
+func TestBuildSourcesRejectsBlankName(t *testing.T) {
+	_, err := BuildSources(
+		config.Config{Services: config.ServicesConfig{Sources: []config.SourceConfig{{
+			Type: compass.SourceTypeStatic,
+		}}}},
+		&http.Client{},
+	)
+	if err == nil || err.Error() != "services.sources[0]: name is required" {
+		t.Fatalf("expected name required error, got %v", err)
+	}
+}
+
+func TestBuildSourcesRejectsDuplicateIdentity(t *testing.T) {
+	_, err := BuildSources(
+		config.Config{Services: config.ServicesConfig{Sources: []config.SourceConfig{
+			{Type: compass.SourceTypeStatic, Name: "manual"},
+			{Type: compass.SourceTypeStatic, Name: "manual"},
+		}}},
+		&http.Client{},
+	)
+	if err == nil ||
+		err.Error() != `services.sources[1]: duplicate source identity "static/manual"` {
+		t.Fatalf("expected duplicate identity error, got %v", err)
+	}
+}
+
+func TestBuildSourcesAllowsSameNameAcrossTypes(t *testing.T) {
+	entries, err := BuildSources(
+		config.Config{Services: config.ServicesConfig{Sources: []config.SourceConfig{
+			{Type: compass.SourceTypeStatic, Name: "local"},
+			{Type: compass.SourceTypeAPI, Name: "local", Endpoint: "https://example.test"},
+		}}},
+		&http.Client{},
+	)
+	if err != nil {
+		t.Fatalf("build sources: %v", err)
+	}
+	if len(entries) != 2 {
+		t.Fatalf("expected two entries, got %d", len(entries))
 	}
 }
 

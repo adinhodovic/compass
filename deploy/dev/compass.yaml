@@ -140,16 +140,16 @@ services:
         namespaces: []
         auto_discover_all: true
 
-    # Reads TAILSCALE_TAILNET_ID and TAILSCALE_OAUTH_CLIENT_ID/SECRET
-    # from the environment. Skipped automatically if creds aren't set.
-    - type: tailscale
-      name: tailnet
-      tailscale:
-        url_scheme: https
-        tags: [tailscale]
-        include_services: false
-        include_devices: true
-        device_tags: [node]
+    # Uncomment to exercise real Tailscale discovery. Requires
+    # TAILSCALE_TAILNET_ID and TAILSCALE_OAUTH_CLIENT_ID/SECRET.
+    # - type: tailscale
+    #   name: tailnet
+    #   tailscale:
+    #     url_scheme: https
+    #     tags: [tailscale]
+    #     include_services: false
+    #     include_devices: true
+    #     device_tags: [node]
 
     # Intentionally points at a port nothing listens on. Exercises the
     # /debug page's error rendering and the registry's "one source

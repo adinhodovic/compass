@@ -187,7 +187,10 @@ func New(
 		staticCacheHeaders(devMode, http.FileServer(http.FS(staticRoot)))))
 	mux.Handle("/metrics", metrics.Handler())
 
-	return loggingMiddleware(metricsMiddleware(authMiddleware(mux, cfg.Auth, logger)), logger)
+	return loggingMiddleware(
+		metricsMiddleware(authMiddleware(mux, cfg.Auth, matchers, logger)),
+		logger,
+	)
 }
 
 func (s Server) health(w http.ResponseWriter, _ *http.Request) {

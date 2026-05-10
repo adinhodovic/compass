@@ -15,8 +15,17 @@ import (
 func okHandler() http.Handler     { return testutil.OKHandler() }
 func discardLogger() *slog.Logger { return testutil.DiscardLogger() }
 
+func testAuthMiddleware(t *testing.T, next http.Handler, cfg config.AuthConfig) http.Handler {
+	t.Helper()
+	matchers, err := compileTrustedProxies(cfg.TrustedProxies)
+	if err != nil {
+		t.Fatalf("compile trusted proxies: %v", err)
+	}
+	return authMiddleware(next, cfg, matchers, discardLogger())
+}
+
 func TestAuthMiddlewareOpenMode(t *testing.T) {
-	mw := authMiddleware(okHandler(), config.AuthConfig{}, discardLogger())
+	mw := testAuthMiddleware(t, okHandler(), config.AuthConfig{})
 	rec := httptest.NewRecorder()
 	mw.ServeHTTP(rec, httptest.NewRequest("GET", "/", nil))
 	if rec.Code != 200 {
@@ -29,7 +38,7 @@ func TestAuthMiddlewareForwardAuthRejectsMissingHeader(t *testing.T) {
 		UserHeader: "X-Forwarded-User",
 		Required:   true,
 	}
-	mw := authMiddleware(okHandler(), cfg, discardLogger())
+	mw := testAuthMiddleware(t, okHandler(), cfg)
 	rec := httptest.NewRecorder()
 	mw.ServeHTTP(rec, httptest.NewRequest("GET", "/", nil))
 	if rec.Code != http.StatusUnauthorized {
@@ -42,7 +51,7 @@ func TestAuthMiddlewareForwardAuthAcceptsHeader(t *testing.T) {
 		UserHeader: "X-Forwarded-User",
 		Required:   true,
 	}
-	mw := authMiddleware(okHandler(), cfg, discardLogger())
+	mw := testAuthMiddleware(t, okHandler(), cfg)
 	req := httptest.NewRequest("GET", "/", nil)
 	req.Header.Set("X-Forwarded-User", "alice")
 	rec := httptest.NewRecorder()
@@ -58,7 +67,7 @@ func TestAuthMiddlewareForwardAuthTrustedProxies(t *testing.T) {
 		Required:       true,
 		TrustedProxies: []string{"10.0.0.0/8", "192.168.1.5"},
 	}
-	mw := authMiddleware(okHandler(), cfg, discardLogger())
+	mw := testAuthMiddleware(t, okHandler(), cfg)
 
 	tests := []struct {
 		remote string
@@ -91,7 +100,7 @@ func TestAuthMiddlewareBasicAuthRejectsAndAccepts(t *testing.T) {
 			Users: []config.BasicAuthUser{{Name: "alice", PasswordHash: string(hash)}},
 		},
 	}
-	mw := authMiddleware(okHandler(), cfg, discardLogger())
+	mw := testAuthMiddleware(t, okHandler(), cfg)
 
 	t.Run("missing creds", func(t *testing.T) {
 		rec := httptest.NewRecorder()
@@ -119,7 +128,7 @@ func TestAuthMiddlewareBasicAuthRejectsAndAccepts(t *testing.T) {
 		check := http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) {
 			captured = r.Header.Get("X-Forwarded-User")
 		})
-		mw := authMiddleware(check, cfg, discardLogger())
+		mw := testAuthMiddleware(t, check, cfg)
 		req := httptest.NewRequest("GET", "/", nil)
 		req.SetBasicAuth("alice", "hunter2")
 		rec := httptest.NewRecorder()
@@ -135,7 +144,7 @@ func TestAuthMiddlewareForwardAuthEdgeCases(t *testing.T) {
 		UserHeader: "X-Forwarded-User",
 		Required:   true,
 	}
-	mw := authMiddleware(okHandler(), cfg, discardLogger())
+	mw := testAuthMiddleware(t, okHandler(), cfg)
 
 	tests := []struct {
 		name       string
@@ -165,7 +174,7 @@ func TestAuthMiddlewareForwardAuthIPv6AndMalformedRemote(t *testing.T) {
 		Required:       true,
 		TrustedProxies: []string{"::1", "fd00::/8", "10.0.0.0/8"},
 	}
-	mw := authMiddleware(okHandler(), cfg, discardLogger())
+	mw := testAuthMiddleware(t, okHandler(), cfg)
 
 	tests := []struct {
 		remote string
@@ -217,7 +226,7 @@ func TestAuthMiddlewareExemptsProbeAndScrapePaths(t *testing.T) {
 		UserHeader: "X-Forwarded-User",
 		Required:   true,
 	}
-	mw := authMiddleware(okHandler(), cfg, discardLogger())
+	mw := testAuthMiddleware(t, okHandler(), cfg)
 	for _, path := range []string{"/static/app.css", "/health", "/metrics"} {
 		rec := httptest.NewRecorder()
 		mw.ServeHTTP(rec, httptest.NewRequest("GET", path, nil))

@@ -15,6 +15,7 @@ unknown: true
 services:
   sources:
     - type: static
+      name: manual
       services:
         - name: Grafana
           url: https://grafana.local
@@ -35,6 +36,7 @@ ui:
 services:
   sources:
     - type: static
+      name: manual
       services:
         - name: Grafana
           url: https://grafana.local
@@ -56,6 +58,7 @@ auth:
 services:
   sources:
     - type: static
+      name: manual
       services:
         - name: Grafana
           url: https://grafana.local
@@ -80,6 +83,7 @@ auth:
 services:
   sources:
     - type: static
+      name: manual
       services:
         - name: Grafana
           url: https://grafana.local
@@ -91,6 +95,69 @@ services:
 	}
 	if cfg.UI.PrimaryColor != "oklch(55% 0.18 250)" {
 		t.Fatalf("unexpected primary color: %q", cfg.UI.PrimaryColor)
+	}
+}
+
+func TestLoadRejectsBlankSourceName(t *testing.T) {
+	path := writeConfig(t, `
+organization:
+  name: Compass
+services:
+  sources:
+    - type: static
+      services:
+        - name: Grafana
+          url: https://grafana.local
+`)
+
+	_, err := Load(path)
+	if err == nil || !strings.Contains(err.Error(), "services.sources[0]: name is required") {
+		t.Fatalf("expected source name validation error, got %v", err)
+	}
+}
+
+func TestLoadRejectsDuplicateSourceIdentity(t *testing.T) {
+	path := writeConfig(t, `
+organization:
+  name: Compass
+services:
+  sources:
+    - type: static
+      name: manual
+      services:
+        - name: Grafana
+          url: https://grafana.local
+    - type: static
+      name: manual
+      services:
+        - name: Prometheus
+          url: https://prometheus.local
+`)
+
+	_, err := Load(path)
+	if err == nil || !strings.Contains(err.Error(), `duplicate source identity "static/manual"`) {
+		t.Fatalf("expected duplicate source identity error, got %v", err)
+	}
+}
+
+func TestLoadAllowsSameSourceNameAcrossTypes(t *testing.T) {
+	path := writeConfig(t, `
+organization:
+  name: Compass
+services:
+  sources:
+    - type: static
+      name: local
+      services:
+        - name: Grafana
+          url: https://grafana.local
+    - type: api
+      name: local
+      endpoint: https://example.test/services
+`)
+
+	if _, err := Load(path); err != nil {
+		t.Fatalf("load: %v", err)
 	}
 }
 
@@ -109,6 +176,7 @@ header_links:
 services:
   sources:
     - type: static
+      name: manual
       services:
         - name: Grafana
           url: https://grafana.local
@@ -139,6 +207,7 @@ organization:
 services:
   sources:
     - type: static
+      name: manual
       services:
         - name: Grafana
           url: https://grafana.local
@@ -165,6 +234,7 @@ auth:
 services:
   sources:
     - type: static
+      name: manual
       services:
         - name: Grafana
           url: https://grafana.local
@@ -188,6 +258,7 @@ organization:
 services:
   sources:
     - type: static
+      name: manual
       services:
         - name: Grafana
           url: ${COMPASS_TEST_URL}
@@ -221,6 +292,7 @@ organization:
 services:
   sources:
     - type: static
+      name: manual
       services:
         - name: Grafana
           url: ${COMPASS_TEST_MISSING}
@@ -239,6 +311,7 @@ organization:
 services:
   sources:
     - type: static
+      name: manual
       services:
         - name: Grafana
           url: https://grafana.local
@@ -262,6 +335,7 @@ debug:
 services:
   sources:
     - type: static
+      name: manual
       services:
         - name: Grafana
           url: https://grafana.local

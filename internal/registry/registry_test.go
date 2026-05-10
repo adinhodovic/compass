@@ -88,6 +88,30 @@ func TestNormalizeUsesCatalogDescriptionFallback(t *testing.T) {
 	}
 }
 
+func TestNormalizeFallbackIDIncludesSourceType(t *testing.T) {
+	reg := &Registry{}
+
+	staticService, ok := reg.normalize(
+		compass.Service{Name: "Grafana", URL: "https://grafana.local"},
+		"local",
+		compass.SourceTypeStatic,
+	)
+	if !ok {
+		t.Fatal("expected static service to normalize")
+	}
+	dockerService, ok := reg.normalize(
+		compass.Service{Name: "Grafana", URL: "https://grafana.local"},
+		"local",
+		compass.SourceTypeDocker,
+	)
+	if !ok {
+		t.Fatal("expected docker service to normalize")
+	}
+	if staticService.ID == dockerService.ID {
+		t.Fatalf("expected source-type-specific IDs, both got %q", staticService.ID)
+	}
+}
+
 func TestApplyFiltersExcludeURLPatterns(t *testing.T) {
 	services := []compass.Service{
 		{Name: "Apex", URL: "https://example.com"},

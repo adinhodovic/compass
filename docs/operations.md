@@ -55,6 +55,9 @@ scrapers don't need credentials.
 | `compass_source_services`                        | gauge     | `source`                              |
 | `compass_source_last_success_timestamp_seconds`  | gauge     | `source`                              |
 
+The `source` label uses Compass's canonical `<type>/<name>` source identity,
+for example `kubernetes/cluster`.
+
 `last_success_timestamp_seconds` is the Unix time of the most recent
 successful refresh. Pair with `time()` for stale-source alerting:
 
