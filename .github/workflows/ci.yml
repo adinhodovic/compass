@@ -112,7 +112,7 @@ jobs:
   release:
     name: Release
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 30
     if: github.event_name == 'release'
     permissions:
       contents: write
