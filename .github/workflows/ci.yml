@@ -103,11 +103,18 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v4
 
+      - name: Docker meta
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: adinhodovic/compass
+
       - name: Test Docker build
         uses: docker/build-push-action@v7
         with:
           push: false
-          tags: adinhodovic/compass:latest
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
 
   release:
     name: Release
@@ -134,12 +141,22 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v4
 
+      - name: Docker meta
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: adinhodovic/compass
+          tags: |
+            type=raw,value=latest
+            type=ref,event=tag
+
       - name: Build and push image
         uses: docker/build-push-action@v7
         with:
           push: true
           platforms: linux/amd64,linux/arm64
-          tags: adinhodovic/compass:latest,adinhodovic/compass:${{ github.event.release.tag_name }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
