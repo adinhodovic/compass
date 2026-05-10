@@ -18,10 +18,10 @@ make dev      # `air` rebuilds Go + assets together
 ```
 
 `make dev` runs `air`, which watches Go, HTML, CSS, JS, and YAML files
-and rebuilds the binary in place. Asset rebuilds (Tailwind compile,
-vendor copy, and `app.js` esbuild minify) run from air's `pre_cmd` via
-`tools/build-assets.mjs`. A single change triggers one ordered rebuild,
-which avoids racing the `//go:embed` against the asset writers.
+and rebuilds the binary in place. Air's `pre_cmd` first runs
+`tools/build-assets.mjs` for vendor copy and `app.js` esbuild minify,
+then runs Tailwind separately. A single change triggers one ordered
+rebuild, which avoids racing the `//go:embed` against the asset writers.
 
 Three QoL targets wrap `docker compose` so you don't have to remember
 the `-f deploy/dev/docker-compose.yml` flag:

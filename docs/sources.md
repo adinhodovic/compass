@@ -453,6 +453,9 @@ Field reference:
 | `tags`                | Tags applied to every discovered Tailscale service/device. |
 | `include_services`    | Toggle Tailscale Services discovery. Defaults to `false`; the Services API is still in alpha. |
 | `include_devices`     | Toggle tailnet device discovery. Defaults to `true`. |
+| `exclude_unauthorized` | Drops unauthorized devices. Defaults to `false`. |
+| `exclude_external`    | Drops external/shared-in devices. Defaults to `false`. |
+| `exclude_stale_after` | Drops devices not seen within a Go duration such as `24h` or `168h`. Empty keeps stale devices. |
 | `service_tags`        | Extra tags appended to Tailscale Services. |
 | `device_tags`         | Extra tags appended to tailnet devices. |
 

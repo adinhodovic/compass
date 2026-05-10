@@ -77,8 +77,8 @@ check that you wrote `""` and not `"0s"`.
 
 Likely causes:
 
-- The URL doesn't parse. Open the binary at `--log.level=debug`; static
-  services with bad URLs log a warning at startup.
+- The URL doesn't parse. Set `logging.level: debug` in `compass.yaml`;
+  static services with bad URLs log a warning at startup.
 - The URL has no scheme. Compass prefixes `https://` when none is
   given, but it still has to parse cleanly.
 - The service `name` is empty. Registry normalization drops nameless

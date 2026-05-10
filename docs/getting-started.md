@@ -142,8 +142,9 @@ Then recreate the container.
 **Helm:**
 
 ```bash
-helm repo update
-helm upgrade compass compass/compass -n compass --set-file config=compass.yaml
+helm upgrade compass oci://ghcr.io/adinhodovic/charts/compass \
+  -n compass \
+  --set-file config=compass.yaml
 ```
 
 Releases follow semver. Breaking changes are called out in the changelog
