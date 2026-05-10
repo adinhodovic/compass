@@ -7,7 +7,7 @@
 </p>
 
 <p align="center">
-  <a href="docs/getting-started.md"><strong>Getting started</strong></a>
+  <a href="https://adinhodovic.github.io/compass/getting-started/"><strong>Getting started</strong></a>
   ·
   <a href="https://adinhodovic.github.io/compass/"><strong>Docs</strong></a>
   ·
@@ -66,4 +66,4 @@ services:
 helm install compass oci://ghcr.io/adinhodovic/charts/compass -n compass --create-namespace --set-file config=compass.yaml
 ```
 
-See [Getting started](docs/getting-started.md) for a minimal config and source examples.
+See [Getting started](https://adinhodovic.github.io/compass/getting-started/) for a minimal config and source examples.
