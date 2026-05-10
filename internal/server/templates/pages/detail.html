@@ -58,10 +58,11 @@
     <div class="card-body p-4 sm:p-6">
       <div class="flex items-center gap-2">
         <span class="flex size-8 items-center justify-center rounded-full bg-primary/10 text-primary">{{icon "lucide:link"}}</span>
-        <p class="card-title">Connection</p>
+        <h2 class="card-title">Connection</h2>
       </div>
       <div class="grid gap-2 sm:join sm:flex sm:gap-0">
-        <input class="input min-w-0 w-full font-mono sm:join-item" readonly value="{{.Service.URL}}">
+        <label class="sr-only" for="service-url">Service URL</label>
+        <input id="service-url" class="input min-w-0 w-full font-mono sm:join-item" readonly value="{{.Service.URL}}">
         <div class="grid grid-cols-2 gap-2 sm:contents">
           <button class="btn sm:join-item sm:flex-none" type="button" data-copy="{{.Service.URL}}" x-on:click="copy($el.dataset.copy)">{{icon "lucide:copy"}}URL</button>
           <button class="btn btn-ghost sm:join-item sm:flex-none" type="button" data-copy="{{.Service.ID}}" x-on:click="copy($el.dataset.copy)">{{icon "lucide:hash"}}ID</button>
@@ -87,7 +88,8 @@
         <p x-show="!note" class="text-sm italic text-base-content/50">No notes yet — click Edit to add one. Stored in your browser only.</p>
         <pre x-show="note" class="whitespace-pre-wrap text-sm font-sans bg-accent/5 border border-accent/20 rounded-lg p-3" x-text="note"></pre>
       </div>
-      <textarea x-show="editing"
+      <label class="sr-only" for="service-notes">Service notes</label>
+      <textarea id="service-notes" x-show="editing"
                 x-model="draft"
                 rows="6"
                 class="textarea w-full font-mono text-sm"

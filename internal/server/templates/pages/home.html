@@ -24,24 +24,24 @@
         </div>
         <div class="flex flex-wrap gap-2">
           <template x-for="service in favoriteServices().slice(0, 6)" :key="service.id">
-            <a class="group flex max-w-full items-center gap-2 rounded-lg bg-base-200 px-2 py-1.5 text-sm transition-colors hover:bg-base-300"
-               :href="'/services/' + service.id"
-               x-on:click="trackRecent(service.id)">
-              <template x-if="service.iconURL">
-                <span class="avatar"><span class="w-5 rounded"><img :src="service.iconURL" :alt="service.name + ' logo'" loading="lazy"></span></span>
-              </template>
-              <template x-if="!service.iconURL">
-                <span class="avatar avatar-placeholder"><span class="bg-neutral text-neutral-content w-5 rounded text-[10px]" x-text="service.iconText || service.name.charAt(0)"></span></span>
-              </template>
-              <span class="min-w-0 leading-tight">
-                <span class="block truncate" x-text="service.name"></span>
-                <span class="block truncate text-[11px] text-base-content/60" x-show="duplicateServiceName(service)" x-text="service.sourceLabel"></span>
-              </span>
+            <span class="group flex max-w-full items-center gap-1 rounded-lg bg-base-200 px-2 py-1.5 text-sm transition-colors hover:bg-base-300">
+              <a class="flex min-w-0 items-center gap-2" :href="'/services/' + service.id" x-on:click="trackRecent(service.id)">
+                <template x-if="service.iconURL">
+                  <span class="avatar"><span class="w-5 rounded"><img :src="service.iconURL" :alt="service.name + ' logo'" loading="lazy"></span></span>
+                </template>
+                <template x-if="!service.iconURL">
+                  <span class="avatar avatar-placeholder"><span class="bg-neutral text-neutral-content w-5 rounded text-[10px]" x-text="service.iconText || service.name.charAt(0)"></span></span>
+                </template>
+                <span class="min-w-0 leading-tight">
+                  <span class="block truncate" x-text="service.name"></span>
+                  <span class="block truncate text-[11px] text-base-content/60" x-show="duplicateServiceName(service)" x-text="service.sourceLabel"></span>
+                </span>
+              </a>
               <button type="button"
                       class="opacity-0 group-hover:opacity-100 transition-opacity text-base-content/50 hover:text-error"
                       x-on:click.prevent.stop="toggleFavorite(service.id)"
                       aria-label="Unpin">{{icon "lucide:x"}}</button>
-            </a>
+            </span>
           </template>
           <span class="badge badge-ghost badge-sm" x-show="favoriteServices().length > 6" x-text="'+' + (favoriteServices().length - 6) + ' more'"></span>
           <p class="text-sm italic text-base-content/50" x-show="favoriteServices().length === 0">No pinned services.</p>
@@ -240,7 +240,7 @@
                data-service-id="{{.ID}}"
                data-group="{{$groupName}}"
                x-show="visibleInGroup($el.dataset.serviceId, {{$ids}}, $el.dataset.group)"
-               x-effect="$el.style.order = sortedIDs({{$ids}}).indexOf($el.dataset.serviceId)"
+                x-effect="$el.style.order = groupOrder($el.dataset.serviceId, {{$ids}})"
                x-transition>
         <div class="card-body gap-3 p-4 sm:gap-4 sm:p-6">
           {{$logo := logo .Icon .Name .SourceType}}

@@ -57,7 +57,7 @@ export function compassHome() {
       this.sourceOptions = [...sourceMap.entries()]
         .map(([value, label]) => ({ value, label }))
         .sort((a, b) => a.label.localeCompare(b.label));
-      const userKey = (document.body.dataset.user || 'anon').toLowerCase();
+      const userKey = (document.body.dataset.user || 'anon').trim().toLowerCase();
       this.storage = {
         favorites: 'compass-favorites:' + userKey,
         recents: 'compass-recents:' + userKey,
@@ -318,6 +318,9 @@ export function compassHome() {
         this.groupCache.values.set(groupKey, this.sortedIDs(ids).filter((id) => this.visible(id)));
       }
       return this.groupCache.values.get(groupKey);
+    },
+    groupOrder(id, ids) {
+      return this.filteredGroupIDs(ids).indexOf(id);
     },
     groupShownCount(group) {
       return this.groupShown[group] || this.pageSize;
