@@ -14,11 +14,12 @@ appVersion: "0.1.0"
 home: https://github.com/adinhodovic/compass
 sources:
   - https://github.com/adinhodovic/compass
+  - https://adinhodovic.github.io/compass/
 maintainers:
   - name: Adin Hodovic
     url: https://github.com/adinhodovic
 keywords:
   - compass
-  - service-catalog
   - homelab
   - dashboard
+  - service-catalog
