@@ -8,6 +8,7 @@ RUN npm ci
 COPY assets ./assets
 COPY internal/server/templates ./internal/server/templates
 COPY tools ./tools
+COPY docs/assets/images ./docs/assets/images
 RUN npm run build
 
 FROM golang:1.26-alpine AS builder
