@@ -30,7 +30,7 @@ var rootCmd = &cobra.Command{
 	Use:   "compass",
 	Short: "Service-discovery dashboard for homelabs",
 	Long:  `Compass discovers services from your homelab (Docker, Kubernetes, Tailscale, Headscale, JSON APIs) and renders them with operational context.`,
-	RunE:  runPortal,
+	RunE:  runCompass,
 }
 
 func Execute() {
@@ -96,7 +96,7 @@ func init() {
 	}
 }
 
-func runPortal(cmd *cobra.Command, args []string) error {
+func runCompass(cmd *cobra.Command, args []string) error {
 	listenAddress = strings.TrimSpace(viper.GetString("listen-address"))
 	configFile = strings.TrimSpace(viper.GetString("config"))
 	if configFile == "" {

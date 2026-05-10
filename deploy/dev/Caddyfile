@@ -1,5 +1,5 @@
-# Dev Caddyfile for portal's API-source test. The admin API is exposed on :2019
-# so the portal can list routes from /config/apps/http/servers/srv0/routes.
+# Dev Caddyfile for compass's API-source test. The admin API is exposed on :2019
+# so compass can list routes from /config/apps/http/servers/srv0/routes.
 #
 # `admin :2019` binds the admin API to every interface (Caddy's default is
 # localhost:2019). Convenient for compose-internal access but never copy

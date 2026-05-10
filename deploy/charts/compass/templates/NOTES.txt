@@ -21,7 +21,7 @@
 {{- end }}
 
 2. Scrape metrics:
-   curl http://<portal>/metrics
+   curl http://<compass>/metrics
 
 3. Per-source health and discovery state:
-   open http://<portal>/debug
+   open http://<compass>/debug

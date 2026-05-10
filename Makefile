@@ -1,5 +1,5 @@
-PORTAL_VERSION := $(shell git describe --tags --always --dirty 2>/dev/null || echo dev)
-LDFLAGS += -X "main.version=$(PORTAL_VERSION)"
+COMPASS_VERSION := $(shell git describe --tags --always --dirty 2>/dev/null || echo dev)
+LDFLAGS += -X "main.version=$(COMPASS_VERSION)"
 LDFLAGS += -X "main.commit=$(shell git rev-parse --short HEAD 2>/dev/null || echo unknown)"
 LDFLAGS += -X "main.buildTime=$(shell date -u "+%Y-%m-%d %H:%M:%S")"
 
