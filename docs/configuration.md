@@ -143,7 +143,7 @@ auth:
   basic:
     users:
       - name: admin
-        password_hash: ${PORTAL_ADMIN_HASH}
+        password_hash: ${COMPASS_ADMIN_HASH}
 ```
 
 | Field             | Default              | Notes                                  |
@@ -262,8 +262,8 @@ The binary takes two flags. Anything else lives in `compass.yaml`.
 
 | Flag                       | Env var                  | Default       | Notes                                  |
 | -------------------------- | ------------------------ | ------------- | -------------------------------------- |
-| `-l`, `--listen-address`   | `PORTAL_LISTEN_ADDRESS`  | `:8080`       | HTTP listen address.                   |
-| `-c`, `--config`           | `PORTAL_CONFIG`          | `compass.yaml` | Path to the config file. Relative or absolute. |
+| `-l`, `--listen-address`   | `COMPASS_LISTEN_ADDRESS` | `:8080`       | HTTP listen address.                   |
+| `-c`, `--config`           | `COMPASS_CONFIG`         | `compass.yaml` | Path to the config file. Relative or absolute. |
 
 Everything else, including provider credentials, Tailscale OAuth,
 Headscale API keys, Docker host, and Kubernetes bearer tokens, is set in

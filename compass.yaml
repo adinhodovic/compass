@@ -61,7 +61,7 @@ ui:
 #   basic:
 #     users:
 #       - name: admin
-#         password_hash: ${PORTAL_ADMIN_HASH}   # bcrypt; htpasswd -BnC 10 USER
+#         password_hash: ${COMPASS_ADMIN_HASH}   # bcrypt; htpasswd -BnC 10 USER
 
 # ──────────────────────────────────────────────────────────────────
 # Operator-only routes. /debug exposes per-source status and the full

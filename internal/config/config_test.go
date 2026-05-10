@@ -181,7 +181,7 @@ services:
 }
 
 func TestLoadExpandsBracedEnvironmentOnly(t *testing.T) {
-	t.Setenv("PORTAL_TEST_URL", "https://grafana.local")
+	t.Setenv("COMPASS_TEST_URL", "https://grafana.local")
 	path := writeConfig(t, `
 organization:
   name: Compass
@@ -190,9 +190,9 @@ services:
     - type: static
       services:
         - name: Grafana
-          url: ${PORTAL_TEST_URL}
+          url: ${COMPASS_TEST_URL}
           metadata:
-            literal: $PORTAL_TEST_URL
+            literal: $COMPASS_TEST_URL
 `)
 
 	cfg, err := Load(path)
@@ -203,7 +203,7 @@ services:
 	if service.URL != "https://grafana.local" {
 		t.Fatalf("expected braced env expansion, got %q", service.URL)
 	}
-	if service.Metadata["literal"] != "$PORTAL_TEST_URL" {
+	if service.Metadata["literal"] != "$COMPASS_TEST_URL" {
 		t.Fatalf(
 			"expected bare env reference to stay literal, got %#v",
 			service.Metadata["literal"],
@@ -212,7 +212,7 @@ services:
 }
 
 func TestLoadRejectsUnsetEnvVar(t *testing.T) {
-	if err := os.Unsetenv("PORTAL_TEST_MISSING"); err != nil {
+	if err := os.Unsetenv("COMPASS_TEST_MISSING"); err != nil {
 		t.Fatalf("unsetenv: %v", err)
 	}
 	path := writeConfig(t, `
@@ -223,11 +223,11 @@ services:
     - type: static
       services:
         - name: Grafana
-          url: ${PORTAL_TEST_MISSING}
+          url: ${COMPASS_TEST_MISSING}
 `)
 
 	_, err := Load(path)
-	if err == nil || !strings.Contains(err.Error(), "PORTAL_TEST_MISSING") {
+	if err == nil || !strings.Contains(err.Error(), "COMPASS_TEST_MISSING") {
 		t.Fatalf("expected unset env error mentioning the variable, got %v", err)
 	}
 }
