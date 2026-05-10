@@ -16,12 +16,15 @@ needed. Helm 3.8 or newer is required.
 
 ## Configuration
 
-Compass needs a `compass.yaml` to start. Two ways to provide it:
+Compass needs a `compass.yaml` to start. Three ways to provide it:
 
 1. Inline in values (default) — the chart's `config:` value is a YAML
    string the chart turns into a ConfigMap mounted at `/etc/compass/compass.yaml`.
 2. External — set `existingConfigMap.name` to a ConfigMap you manage
    yourself (must contain a `compass.yaml` key).
+3. Secret — set `existingSecret.name` to a Secret you manage yourself
+   (must contain a `compass.yaml` key). Use this when `compass.yaml`
+   contains inline credentials.
 
 Inline example:
 
@@ -55,6 +58,20 @@ env:
       secretKeyRef:
         name: headscale-api-key
         key: token
+```
+
+If you cannot avoid inline secrets in `compass.yaml`, store the whole config
+in a Secret instead of the inline `config:` value:
+
+```bash
+kubectl create secret generic compass-config \
+  -n compass \
+  --from-file=compass.yaml=./compass.yaml
+```
+
+```yaml
+existingSecret:
+  name: compass-config
 ```
 
 ## Pages and catalog overrides
@@ -159,8 +176,9 @@ serviceMonitor:
 | `image.pullPolicy`           | string | `IfNotPresent`             | Pull policy. |
 | `imagePullSecrets`           | list   | `[]`                       | Image-pull secrets. |
 | `nameOverride` / `fullnameOverride` | string | `""`               | Standard chart-name overrides. |
-| `config`                     | string | (Kubernetes-source default) | Inline `compass.yaml`. Ignored if `existingConfigMap.name` is set. |
+| `config`                     | string | (Kubernetes-source default) | Inline `compass.yaml`. Ignored if `existingConfigMap.name` or `existingSecret.name` is set. |
 | `existingConfigMap.name`     | string | `""`                       | External ConfigMap (must have a `compass.yaml` key). |
+| `existingSecret.name`        | string | `""`                       | External Secret (must have a `compass.yaml` key). Mutually exclusive with `existingConfigMap.name`. |
 | `pages.enabled`              | bool   | `false`                    | Mount markdown pages at `pages.mountPath`. Set `pages.dir` in `config:` to the same path. |
 | `pages.mountPath`            | string | `/etc/compass/pages`        | Where the pages volume mounts inside the container. |
 | `pages.files`                | object | `{}`                       | Inline path → markdown content; nested keys (`on-call/runbook.md`) become sub-directories via `items:` projection. Ignored when `existingConfigMap.name` is set. |

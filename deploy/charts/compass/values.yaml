@@ -13,13 +13,15 @@ imagePullSecrets: []
 nameOverride: ""
 fullnameOverride: ""
 
-# Compass configuration. Two ways to provide it:
+# Compass configuration. Three ways to provide it:
 #
 #   1. Inline (default) — set `config:` to a YAML string and the chart
 #      generates a ConfigMap with key `compass.yaml`.
 #   2. External — set `existingConfigMap.name` to point at a ConfigMap
-#      you manage out of band. Useful when secret material is templated
-#      in via a separate flow (sealed-secrets, ESO, etc.).
+#      you manage out of band.
+#   3. Secret — set `existingSecret.name` to point at a Secret with a
+#      `compass.yaml` key. Use this when the config itself contains
+#      inline secrets.
 config: |
   organization:
     name: Compass
@@ -36,6 +38,12 @@ config: |
 existingConfigMap:
   # Name of an existing ConfigMap to mount instead of generating one
   # from `config:` above. The ConfigMap must contain a `compass.yaml` key.
+  name: ""
+
+existingSecret:
+  # Name of an existing Secret to mount instead of generating a ConfigMap
+  # from `config:` above. The Secret must contain a `compass.yaml` key.
+  # Mutually exclusive with existingConfigMap.name.
   name: ""
 
 # Markdown pages mounted at `mountPath` and surfaced through Compass's

@@ -13,11 +13,10 @@ spec:
   template:
     metadata:
       annotations:
-        # Roll the deployment when inline content changes — the underlying
-        # ConfigMap mount updates automatically, but for compass.yaml we
-        # use subPath which doesn't, and for pages/catalog this still
-        # speeds the roll up to the next reconcile.
-        {{- if not .Values.existingConfigMap.name }}
+        # Roll the deployment when chart-managed inline content changes.
+        # compass.yaml uses subPath, so ConfigMap updates do not refresh the
+        # mounted file without a pod restart.
+        {{- if and (not .Values.existingConfigMap.name) (not .Values.existingSecret.name) }}
         checksum/config: {{ .Values.config | sha256sum }}
         {{- end }}
         {{- if and .Values.pages.enabled (not .Values.pages.existingConfigMap.name) }}
@@ -98,8 +97,13 @@ spec:
             {{- end }}
       volumes:
         - name: config
+          {{- if eq (include "compass.configVolumeKind" .) "secret" }}
+          secret:
+            secretName: {{ include "compass.configObjectName" . }}
+          {{- else }}
           configMap:
-            name: {{ include "compass.configMapName" . }}
+            name: {{ include "compass.configObjectName" . }}
+          {{- end }}
         {{- if include "compass.pagesMountActive" . }}
         - name: pages
           configMap:

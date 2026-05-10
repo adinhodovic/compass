@@ -1,8 +1,8 @@
-{{- if not .Values.existingConfigMap.name -}}
+{{- if and (not .Values.existingConfigMap.name) (not .Values.existingSecret.name) -}}
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: {{ include "compass.configMapName" . }}
+  name: {{ include "compass.configObjectName" . }}
   namespace: {{ .Release.Namespace }}
   labels:
     {{- include "compass.labels" . | nindent 4 }}
