@@ -27,7 +27,7 @@
             <span class="group flex max-w-full items-center gap-1 rounded-lg bg-base-200 px-2 py-1.5 text-sm transition-colors hover:bg-base-300">
               <a class="flex min-w-0 items-center gap-2" :href="'/services/' + service.id" x-on:click="trackRecent(service.id)">
                 <template x-if="service.iconURL">
-                  <span class="avatar"><span class="w-5 rounded"><img :src="service.iconURL" :alt="service.name + ' logo'" loading="lazy"></span></span>
+                  <span class="avatar"><span class="w-5 rounded"><img :src="service.iconURL" :alt="service.name + ' logo'" class="object-contain" loading="lazy"></span></span>
                 </template>
                 <template x-if="!service.iconURL">
                   <span class="avatar avatar-placeholder"><span class="bg-neutral text-neutral-content w-5 rounded text-[10px]" x-text="service.iconText || service.name.charAt(0)"></span></span>
@@ -61,7 +61,7 @@
             <a class="flex max-w-full items-center gap-2 rounded-lg px-2 py-1.5 text-sm text-base-content/80 transition-colors hover:bg-base-200"
                :href="'/services/' + service.id">
               <template x-if="service.iconURL">
-                <span class="avatar"><span class="w-5 rounded"><img :src="service.iconURL" :alt="service.name + ' logo'" loading="lazy"></span></span>
+                <span class="avatar"><span class="w-5 rounded"><img :src="service.iconURL" :alt="service.name + ' logo'" class="object-contain" loading="lazy"></span></span>
               </template>
               <template x-if="!service.iconURL">
                 <span class="avatar avatar-placeholder"><span class="bg-neutral text-neutral-content w-5 rounded text-[10px]" x-text="service.iconText || service.name.charAt(0)"></span></span>
@@ -247,7 +247,7 @@
           <div class="flex items-start gap-3 sm:gap-4">
             {{if eq $logo.Kind "image"}}
             <div class="avatar">
-              <div class="w-10 rounded-lg"><img src="{{$logo.URL}}" alt="{{.Name}} logo" loading="lazy"></div>
+              <div class="w-10 rounded-lg"><img src="{{$logo.URL}}" alt="{{.Name}} logo" class="object-contain" loading="lazy"></div>
             </div>
             {{else}}
             <div class="avatar avatar-placeholder">

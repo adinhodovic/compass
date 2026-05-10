@@ -1,4 +1,6 @@
-FROM node:24-alpine AS assets
+# syntax=docker/dockerfile:1.7
+
+FROM --platform=$BUILDPLATFORM node:24-alpine AS assets
 
 WORKDIR /app
 
@@ -11,14 +13,15 @@ COPY tools ./tools
 COPY docs/assets/images ./docs/assets/images
 RUN npm run build
 
-FROM golang:1.26-alpine AS builder
+FROM --platform=$BUILDPLATFORM golang:1.26-alpine AS builder
 
 RUN apk add --no-cache git ca-certificates tzdata
 
 WORKDIR /app
 
 COPY go.mod go.sum ./
-RUN go mod download
+RUN --mount=type=cache,target=/go/pkg/mod,sharing=locked \
+    go mod download
 
 COPY . .
 COPY --from=assets /app/internal/server/static ./internal/server/static
@@ -28,7 +31,9 @@ ARG TARGETARCH
 ARG VERSION=dev
 ARG COMMIT=unknown
 ARG BUILD_TIME=unknown
-RUN CGO_ENABLED=0 GOOS=$TARGETOS GOARCH=$TARGETARCH go build \
+RUN --mount=type=cache,target=/go/pkg/mod,sharing=locked \
+    --mount=type=cache,target=/root/.cache/go-build,sharing=locked \
+    CGO_ENABLED=0 GOOS=$TARGETOS GOARCH=$TARGETARCH go build \
     -ldflags="-s -w -X 'main.version=${VERSION}' -X 'main.commit=${COMMIT}' -X 'main.buildTime=${BUILD_TIME}'" \
     -o compass ./cmd/compass
 
