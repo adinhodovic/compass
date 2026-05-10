@@ -3,7 +3,7 @@
 <div class="grid gap-4 sm:gap-6" x-data="debugPagination()" x-init="init()">
   <section>
     <p class="text-xs uppercase text-base-content/60">Operator</p>
-    <p class="mt-2 text-2xl font-bold sm:text-3xl">Debug</p>
+    <h1 class="mt-2 text-2xl font-bold sm:text-3xl">Debug</h1>
     <p class="mt-2 hidden max-w-3xl text-base-content/70 sm:block">Per-source health and the services each one returned. Useful when figuring out why a service isn't showing up where you expect.</p>
   </section>
 
@@ -92,7 +92,7 @@
           {{else if $status.LastLoaded.IsZero}}<span class="badge badge-ghost">pending</span>
           {{else}}<span class="badge badge-success">up</span>
           {{end}}
-          <p class="card-title min-w-0 break-words">{{$status.Name}}</p>
+          <h2 class="card-title min-w-0 break-words">{{$status.Name}}</h2>
           <span class="badge badge-outline">{{$status.Type}}</span>
           <span class="basis-full text-xs text-base-content/60 sm:basis-auto">{{$status.Services}} services · {{timeAgo $status.LastLoaded}}</span>
         </div>

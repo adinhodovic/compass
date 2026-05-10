@@ -1,5 +1,5 @@
 {{define "nav"}}
-<div class="navbar bg-base-200 shadow-sm sticky top-0 z-40" hx-boost="true">
+<nav class="navbar bg-base-200 shadow-sm sticky top-0 z-40" hx-boost="true" aria-label="Primary">
   <div class="container mx-auto navbar p-0 px-4">
     <div class="navbar-start min-w-0 flex-1 md:flex-none">
       <a class="btn btn-ghost text-base font-semibold min-w-0 px-2" href="/">
@@ -32,7 +32,7 @@
         {{range .HeaderLinks}}
         {{if .Links}}
         <div class="dropdown dropdown-end">
-          <div tabindex="0" role="button" class="btn btn-ghost btn-sm gap-2">
+          <button type="button" class="btn btn-ghost btn-sm gap-2">
             {{if .Icon}}
               {{$linkLogo := logo .Icon .Label "link"}}
               {{if eq $linkLogo.Kind "image"}}
@@ -43,7 +43,7 @@
             {{end}}
             <span>{{.Label}}</span>
             {{icon "lucide:chevron-down"}}
-          </div>
+          </button>
           <ul tabindex="0" class="dropdown-content menu bg-base-100 rounded-box shadow-md mt-2 w-60 z-50">
             {{range .Links}}
             <li>
@@ -90,11 +90,11 @@
           {{end}}
         {{else}}
           <div class="dropdown dropdown-end">
-            <div tabindex="0" role="button" class="btn btn-ghost btn-sm gap-2">
+            <button type="button" class="btn btn-ghost btn-sm gap-2">
               {{icon "lucide:book-open"}}
               <span>{{.Title}}</span>
               {{icon "lucide:chevron-down"}}
-            </div>
+            </button>
             <ul tabindex="0" class="dropdown-content menu bg-base-100 rounded-box shadow-md mt-2 w-56 z-50">
               {{range .Pages}}<li><a href="{{.URL}}">{{.Title}}</a></li>{{end}}
             </ul>
@@ -189,5 +189,5 @@
       </div>
     </div>
   </div>
-</div>
+</nav>
 {{end}}

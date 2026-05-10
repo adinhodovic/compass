@@ -116,7 +116,7 @@
 </div>
 <div x-data="compassCommand()" x-init="init()" x-on:open-command.window="openCommand()" x-on:keydown.escape.window="open = false">
   <dialog class="modal" role="dialog" aria-modal="true" aria-labelledby="command-palette-label" x-bind:class="open ? 'modal-open' : ''">
-    <div class="modal-box max-w-[52rem] px-3 sm:px-4 pt-0 pb-3 sm:pb-4 w-[calc(100vw-1rem)] sm:w-auto sm:min-w-[40rem] md:min-w-[44rem] lg:min-w-[48rem] max-h-[80vh] overflow-y-auto">
+    <div class="modal-box max-w-[52rem] px-3 sm:px-4 pt-0 pb-3 sm:pb-4 w-[calc(100vw-1rem)] max-h-[80vh] overflow-y-auto">
       <div class="sticky top-0 z-10 bg-base-100 -mx-3 sm:-mx-4 px-3 sm:px-4 pt-3 sm:pt-4 pb-3">
         <span id="command-palette-label" class="sr-only">Command palette</span>
         <label class="input w-full">
@@ -131,29 +131,30 @@
       </div>
       <ul class="menu w-full flex-nowrap">
         <template x-for="group in groupedResults()" :key="group.title">
-          <div>
-            <li class="menu-title" x-text="group.title"></li>
-            <template x-for="item in group.items" :key="item.value">
-              <li>
-                <a class="gap-3"
-                   x-bind:class="results().indexOf(item) === activeIndex ? 'bg-base-200' : ''"
-                   x-on:mouseenter="activeIndex = results().indexOf(item)"
-                   x-on:click.prevent="select(item)"
-                   href="#">
-                  {{/* Two static iconify-icons + x-show to avoid the
-                       x-bind:icon timing race against iconify-icon's
-                       connectedCallback (binds set the attribute after
-                       the custom element has already inspected it,
-                       leaving some result rows blank). */}}
-                  <iconify-icon class="text-base-content/60" icon="lucide:file-text" x-show="item.type === 'page'"></iconify-icon>
-                  <iconify-icon class="text-base-content/60" icon="lucide:box" x-show="item.type !== 'page'"></iconify-icon>
-                  <span class="min-w-0 flex-1 truncate" x-text="item.label"></span>
-                  <span class="badge badge-ghost badge-sm hidden sm:inline-flex" x-text="item.type"></span>
-                  <span class="hidden text-xs text-base-content/60 sm:inline" x-show="item.section" x-text="item.section"></span>
-                </a>
-              </li>
-            </template>
-          </div>
+          <li>
+            <span class="menu-title" x-text="group.title"></span>
+            <ul class="menu menu-sm w-full p-0">
+              <template x-for="item in group.items" :key="item.value">
+                <li>
+                  <a class="gap-3"
+                     x-bind:class="results().indexOf(item) === activeIndex ? 'bg-base-200' : ''"
+                     x-on:mouseenter="activeIndex = results().indexOf(item)"
+                     x-on:click.prevent="select(item)"
+                     href="#">
+                    <span class="text-base-content/60" x-show="item.type === 'page'" aria-hidden="true">
+                      <svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"></path><path d="M14 2v4a2 2 0 0 0 2 2h4"></path><path d="M10 9H8"></path><path d="M16 13H8"></path><path d="M16 17H8"></path></svg>
+                    </span>
+                    <span class="text-base-content/60" x-show="item.type !== 'page'" aria-hidden="true">
+                      <svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21 8-9-5-9 5 9 5 9-5Z"></path><path d="M3 8v8l9 5 9-5V8"></path><path d="M12 13v8"></path></svg>
+                    </span>
+                    <span class="min-w-0 flex-1 truncate" x-text="item.label"></span>
+                    <span class="badge badge-ghost badge-sm hidden sm:inline-flex" x-text="item.type"></span>
+                    <span class="hidden text-xs text-base-content/60 sm:inline" x-show="item.section" x-text="item.section"></span>
+                  </a>
+                </li>
+              </template>
+            </ul>
+          </li>
         </template>
         <template x-if="!results().length">
           <li class="menu-disabled px-4 py-3">No matches</li>

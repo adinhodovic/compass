@@ -30,12 +30,6 @@ export function compassCommand() {
       }
       return Object.entries(buckets).map(([title, items]) => ({ title, items }));
     },
-    toggle() {
-      this.open = !this.open;
-      if (this.open) {
-        this.focusInput();
-      }
-    },
     openCommand() {
       this.open = true;
       this.focusInput();
