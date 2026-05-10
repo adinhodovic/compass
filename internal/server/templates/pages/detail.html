@@ -1,0 +1,192 @@
+{{define "detail"}}{{template "base-start" .}}
+<div class="grid gap-4 sm:gap-6">
+  <nav class="breadcrumbs max-w-full overflow-x-auto text-sm" aria-label="Breadcrumb">
+    <ul>
+      <li><a href="/">Services</a></li>
+      <li>{{.Service.Name}}</li>
+    </ul>
+  </nav>
+
+  <section class="card overflow-hidden bg-gradient-to-br from-primary/15 via-base-100 to-secondary/10 shadow-sm border border-primary/20">
+    {{$logo := logo .Service.Icon .Service.Name .Service.SourceType}}
+    <div class="card-body p-4 sm:p-6">
+      <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:gap-6">
+        {{if eq $logo.Kind "image"}}
+        <div class="avatar shrink-0">
+          <div class="w-12 sm:w-16 rounded-xl ring-2 ring-primary/20 ring-offset-2 ring-offset-base-100">
+            <img src="{{$logo.URL}}" alt="{{.Service.Name}} logo" loading="lazy">
+          </div>
+        </div>
+        {{else}}
+        <div class="avatar avatar-placeholder shrink-0">
+          <div class="w-12 sm:w-16 rounded-xl bg-primary text-primary-content ring-2 ring-primary/20 ring-offset-2 ring-offset-base-100">
+            <span class="text-lg sm:text-xl font-semibold">{{$logo.Text}}</span>
+          </div>
+        </div>
+        {{end}}
+
+        <div class="min-w-0 flex-1">
+          <p class="text-xs uppercase font-semibold tracking-wide text-primary">Service</p>
+          <h1 class="text-2xl sm:text-3xl font-bold mt-1 break-words">{{.Service.Name}}</h1>
+          <div class="mt-3 flex flex-wrap gap-1.5">
+            <span class="badge badge-outline max-w-full truncate">{{sourceLabel .Service.SourceType .Service.Source}}</span>
+            {{range $index, $tag := .Service.Tags}}
+              {{if eq $index 0}}
+              <span class="badge badge-primary max-w-full truncate border-primary bg-primary text-primary-content">{{$tag}}</span>
+              {{else}}
+              <span class="badge badge-outline max-w-full truncate border-primary/40 text-primary {{if ge $index 5}}hidden sm:inline-flex{{end}}">{{$tag}}</span>
+              {{end}}
+            {{end}}
+            {{if gt (len .Service.Tags) 5}}<span class="badge badge-ghost sm:hidden">+{{sub (len .Service.Tags) 5}} more</span>{{end}}
+          </div>
+          {{if .Service.Description}}<p class="mt-4 text-base-content/80">{{.Service.Description}}</p>{{end}}
+        </div>
+
+        <div class="card-actions hidden shrink-0 sm:flex">
+          <a class="btn btn-primary" href="{{.Service.URL}}" target="_blank" rel="noopener">{{icon "lucide:external-link"}}Open</a>
+          <button class="btn" type="button" data-copy="{{.Service.URL}}" x-on:click="copy($el.dataset.copy)">{{icon "lucide:copy"}}Copy</button>
+        </div>
+      </div>
+      <div class="card-actions mt-2 grid grid-cols-2 gap-2 sm:hidden">
+        <a class="btn btn-primary flex-1" href="{{.Service.URL}}" target="_blank" rel="noopener">{{icon "lucide:external-link"}}Open</a>
+        <button class="btn flex-1" type="button" data-copy="{{.Service.URL}}" x-on:click="copy($el.dataset.copy)">{{icon "lucide:copy"}}Copy</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="card bg-base-100 shadow-sm border border-base-300">
+    <div class="card-body p-4 sm:p-6">
+      <div class="flex items-center gap-2">
+        <span class="flex size-8 items-center justify-center rounded-full bg-primary/10 text-primary">{{icon "lucide:link"}}</span>
+        <p class="card-title">Connection</p>
+      </div>
+      <div class="grid gap-2 sm:join sm:flex sm:gap-0">
+        <input class="input min-w-0 w-full font-mono sm:join-item" readonly value="{{.Service.URL}}">
+        <div class="grid grid-cols-2 gap-2 sm:contents">
+          <button class="btn sm:join-item sm:flex-none" type="button" data-copy="{{.Service.URL}}" x-on:click="copy($el.dataset.copy)">{{icon "lucide:copy"}}URL</button>
+          <button class="btn btn-ghost sm:join-item sm:flex-none" type="button" data-copy="{{.Service.ID}}" x-on:click="copy($el.dataset.copy)">{{icon "lucide:hash"}}ID</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="card bg-base-100 shadow-sm border border-base-300" data-service-id="{{.Service.ID}}" x-data="serviceNotes()" x-init="init($el.dataset.serviceId)">
+    <div class="card-body p-4 sm:p-6">
+      <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div class="flex items-center gap-2">
+          <span class="flex size-8 items-center justify-center rounded-full bg-accent/10 text-accent">{{icon "lucide:notebook-pen"}}</span>
+          <h2 class="card-title">Notes</h2>
+        </div>
+        <div class="flex items-center gap-2">
+          <span class="hidden sm:inline text-xs text-base-content/60" x-show="!editing && note">Saved locally · only visible to you</span>
+          <button class="btn btn-sm" type="button" x-on:click="editing = !editing" x-show="!editing">{{icon "lucide:pencil"}}Edit</button>
+          <button class="btn btn-sm btn-primary" type="button" x-on:click="save()" x-show="editing">{{icon "lucide:check"}}Save</button>
+        </div>
+      </div>
+      <div x-show="!editing">
+        <p x-show="!note" class="text-sm italic text-base-content/50">No notes yet — click Edit to add one. Stored in your browser only.</p>
+        <pre x-show="note" class="whitespace-pre-wrap text-sm font-sans bg-accent/5 border border-accent/20 rounded-lg p-3" x-text="note"></pre>
+      </div>
+      <textarea x-show="editing"
+                x-model="draft"
+                rows="6"
+                class="textarea w-full font-mono text-sm"
+                placeholder="Anything you want to remember about this service. Markdown-ish, plain-text, whatever."></textarea>
+    </div>
+  </section>
+
+  {{if .Service.Metadata}}
+  <section class="card bg-base-100 shadow-sm border border-base-300">
+    <div class="card-body p-4 sm:p-6">
+      <div class="flex flex-wrap items-center justify-between gap-2">
+        <div class="flex items-start gap-2">
+          <span class="mt-0.5 flex size-8 items-center justify-center rounded-full bg-info/10 text-info">{{icon "lucide:database"}}</span>
+          <div>
+          <h2 class="card-title">Metadata</h2>
+          <p class="text-xs text-base-content/60">Source-provided fields for debugging and context.</p>
+          </div>
+        </div>
+        <span class="badge badge-info badge-soft">{{len (metadata .Service.Metadata)}} fields</span>
+      </div>
+      <div class="grid gap-2 sm:hidden">
+        {{range metadata .Service.Metadata}}
+        <article class="rounded-box min-w-0 border border-base-300 bg-base-200/40 p-3">
+          <div class="mb-2 flex items-start justify-between gap-2">
+            <p class="min-w-0 break-words text-sm font-semibold">{{.Key}}</p>
+            <button class="btn btn-ghost btn-xs btn-square shrink-0" type="button" data-copy="{{.Value}}" x-on:click="copy($el.dataset.copy)" aria-label="Copy value">{{icon "lucide:copy"}}</button>
+          </div>
+          {{if .URL}}<a class="link link-primary block wrap-anywhere text-sm" href="{{.Value}}">{{.Value}}</a>{{else}}<pre class="max-w-full whitespace-pre-wrap wrap-anywhere font-mono text-xs">{{.Value}}</pre>{{end}}
+        </article>
+        {{end}}
+      </div>
+      <div class="hidden overflow-x-auto sm:block">
+        <table class="table table-zebra table-sm">
+          <thead>
+            <tr>
+              <th class="w-32 sm:w-44">Field</th>
+              <th>Value</th>
+              <th class="w-12 text-right"><span class="sr-only">Copy</span></th>
+            </tr>
+          </thead>
+          <tbody>
+            {{range metadata .Service.Metadata}}
+            <tr>
+              <td class="align-top font-medium break-words">{{.Key}}</td>
+              <td class="align-top">
+                {{if .URL}}<a class="link link-primary break-words" href="{{.Value}}">{{.Value}}</a>{{else}}<pre class="font-mono text-xs whitespace-pre-wrap break-words">{{.Value}}</pre>{{end}}
+              </td>
+              <td class="align-top text-right">
+                <button class="btn btn-ghost btn-xs btn-square" type="button" data-copy="{{.Value}}" x-on:click="copy($el.dataset.copy)" aria-label="Copy value">{{icon "lucide:copy"}}</button>
+              </td>
+            </tr>
+            {{end}}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+  {{end}}
+
+  {{if .Service.Panels}}
+  <section>
+    <div class="mb-3 flex items-center gap-2 sm:mb-4">
+      <span class="flex size-8 items-center justify-center rounded-full bg-secondary/10 text-secondary">{{icon "lucide:chart-no-axes-combined"}}</span>
+      <h2 class="card-title">Grafana panels</h2>
+    </div>
+    <div class="grid gap-3 sm:gap-4{{if gt (len .Service.Panels) 1}} lg:grid-cols-2{{end}}">
+      {{range .Service.Panels}}
+      <article class="card bg-base-100 shadow-sm border border-base-300">
+        <div class="card-body p-4 sm:p-6">
+          <div class="flex items-start justify-between gap-2">
+            <h3 class="card-title min-w-0 break-words">{{.Title}}</h3>
+            <div class="tooltip tooltip-left shrink-0" data-tip="Copy shortcode to embed this panel in a markdown page">
+              <button class="btn btn-ghost btn-xs gap-1" type="button"
+                      data-copy='{{printf "{{< panel service=%s title=%q >}}" $.Service.ID .Title}}'
+                      x-on:click="copy($el.dataset.copy)" aria-label="Copy markdown shortcode">{{icon "lucide:braces"}}<span class="hidden sm:inline">Embed</span></button>
+            </div>
+          </div>
+          <iframe class="grafana-panel h-72 w-full rounded-md border border-base-300 sm:h-80" title="{{.Title}}" src="{{.URL}}"></iframe>
+        </div>
+      </article>
+      {{end}}
+    </div>
+  </section>
+  {{end}}
+
+  {{if .Backlinks}}
+  <section class="card bg-base-100 shadow-sm border border-base-300">
+    <div class="card-body p-4 sm:p-6">
+      <div class="mb-3 flex items-center gap-2">
+        <span class="flex size-8 items-center justify-center rounded-full bg-warning/10 text-warning">{{icon "lucide:files"}}</span>
+        <h2 class="card-title">Mentioned in</h2>
+      </div>
+      <ul class="menu menu-sm bg-base-200 rounded-box w-full">
+        {{range .Backlinks}}
+        <li><a href="{{.URL}}">{{icon "lucide:file-text"}}{{.Title}}</a></li>
+        {{end}}
+      </ul>
+    </div>
+  </section>
+  {{end}}
+</div>
+{{template "base-end" .}}{{end}}

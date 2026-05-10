@@ -1,0 +1,59 @@
+---
+name: Release Chart
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "deploy/charts/**"
+
+jobs:
+  release:
+    permissions:
+      contents: write       # chart-releaser tags new versions on this repo
+      packages: write       # `helm push` to ghcr.io/<owner>/charts
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0    # chart-releaser compares against existing tags
+
+      - name: Configure Git
+        run: |
+          git config user.name "$GITHUB_ACTOR"
+          git config user.email "$GITHUB_ACTOR@users.noreply.github.com"
+
+      - name: Set up Helm
+        uses: azure/setup-helm@v5
+
+      - name: Package new chart versions
+        # skip_upload: only package versions that don't have a tag yet —
+        # we ship them via OCI below instead of GitHub Releases / gh-pages.
+        # Output lands in .cr-release-packages/.
+        uses: helm/chart-releaser-action@v1.7.0
+        with:
+          charts_dir: deploy/charts
+          skip_upload: true
+          mark_as_latest: false
+        env:
+          CR_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
+
+      - name: Log in to GHCR
+        run: |
+          echo "${{ secrets.GITHUB_TOKEN }}" \
+            | helm registry login ghcr.io --username "${{ github.actor }}" --password-stdin
+
+      - name: Push to GHCR
+        run: |
+          shopt -s nullglob
+          packages=(.cr-release-packages/*.tgz)
+          if [ ${#packages[@]} -eq 0 ]; then
+            echo "No new chart versions to push — Chart.yaml version is unchanged."
+            exit 0
+          fi
+          for pkg in "${packages[@]}"; do
+            helm push "$pkg" "oci://ghcr.io/${{ github.repository_owner }}/charts"
+          done

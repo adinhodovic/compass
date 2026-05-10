@@ -1,0 +1,230 @@
+# Default values for Compass.
+# This is a YAML-formatted file.
+
+replicaCount: 1
+
+image:
+  repository: adinhodovic/compass
+  pullPolicy: IfNotPresent
+  # Overrides the image tag whose default is the chart appVersion.
+  tag: ""
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+# Compass configuration. Two ways to provide it:
+#
+#   1. Inline (default) — set `config:` to a YAML string and the chart
+#      generates a ConfigMap with key `compass.yaml`.
+#   2. External — set `existingConfigMap.name` to point at a ConfigMap
+#      you manage out of band. Useful when secret material is templated
+#      in via a separate flow (sealed-secrets, ESO, etc.).
+config: |
+  organization:
+    name: Compass
+    description: Services discovered across the cluster.
+
+  services:
+    sources:
+      - type: kubernetes
+        name: cluster
+        kubernetes:
+          namespaces: []
+          auto_discover_all: true
+
+existingConfigMap:
+  # Name of an existing ConfigMap to mount instead of generating one
+  # from `config:` above. The ConfigMap must contain a `compass.yaml` key.
+  name: ""
+
+# Markdown pages mounted at `mountPath` and surfaced through Compass's
+# pages.dir feature. Three modes:
+#
+#   1. Inline (default off) — set `pages.enabled: true` and put markdown
+#      under `pages.files`. The chart generates a ConfigMap and mounts
+#      it at `mountPath`.
+#   2. External — set `pages.existingConfigMap.name` to a ConfigMap you
+#      manage out of band (GitOps, Kustomize, External Secrets, etc.).
+#   3. Generic — leave `pages.enabled: false` and use `volumes` /
+#      `volumeMounts` for PVCs, projected volumes, CSI drivers, etc.
+#
+# Whichever mode you pick, point `config:` at the same path:
+#   pages:
+#     dir: /etc/compass/pages
+#
+# ConfigMaps cap at ~1 MiB; for larger page sets use option 2 or 3.
+pages:
+  enabled: false
+  mountPath: /etc/compass/pages
+  # Map of <relative path under mountPath> → file content. Sub-directory
+  # keys (`on-call/runbook.md`) become navbar dropdowns; top-level keys
+  # become direct nav links.
+  files: {}
+    # home.md: |
+    #   ---
+    #   title: Home
+    #   ---
+    #   Welcome to Compass.
+    # on-call/runbook.md: |
+    #   # Runbook
+    #   …
+  existingConfigMap:
+    # External ConfigMap to mount instead of generating one from
+    # `pages.files`. Each key in the ConfigMap becomes a file under
+    # `mountPath`.
+    name: ""
+
+# Catalog overrides mounted at `mountPath` and surfaced through the
+# Compass's catalog.path feature. Same three-mode shape as pages.
+#
+# Point `config:` at the same path:
+#   catalog:
+#     path: /etc/compass/catalog
+catalog:
+  enabled: false
+  mountPath: /etc/compass/catalog
+  # Map of <filename> → YAML content. Files are merged in lexical order;
+  # later files win on conflict (per-field).
+  files: {}
+    # 01-descriptions.yaml: |
+    #   grafana:
+    #     description: Cluster + service health dashboards.
+    # 99-local.yaml: |
+    #   runbook-compass:
+    #     icon: selfhst:bookstack
+    #     tags: [docs, on-call]
+  existingConfigMap:
+    name: ""
+
+# Extra environment variables for Compass container — useful for
+# `${VAR}` references inside the config (Tailscale OAuth, Headscale API
+# keys, custom API tokens).
+env: []
+# - name: TAILSCALE_TAILNET_ID
+#   value: example.com
+# - name: HEADSCALE_API_KEY
+#   valueFrom:
+#     secretKeyRef:
+#       name: headscale-api-key
+#       key: token
+
+serviceAccount:
+  # Specifies whether a service account should be created.
+  create: true
+  # Automatically mount a ServiceAccount's API credentials?
+  automount: true
+  # Annotations to add to the service account.
+  annotations: {}
+  # The name of the service account to use. If not set and create is true,
+  # a name is generated using the fullname template.
+  name: ""
+
+# RBAC for the kubernetes source. On by default since most Helm
+# installs use the kubernetes source against the host cluster. Set to
+# `false` if you only run non-Kubernetes sources (docker, tailscale,
+# api, etc.) or supply your own RBAC out-of-band. Grants get/list/watch
+# on Gateway API HTTPRoute / GRPCRoute and Kubernetes Ingress.
+rbac:
+  create: true
+  # Bound at cluster scope so the kubernetes source can list across all
+  # namespaces (the `namespaces: []` config). Set to `Role` if you scope
+  # `kubernetes.namespaces:` to a fixed list.
+  scope: ClusterRole
+
+podAnnotations: {}
+podLabels: {}
+
+# Hardened defaults so installs land cleanly in PSA `restricted`
+# namespaces. The image runs as uid 1001 (see Dockerfile) and writes
+# nothing at runtime — config/pages/catalog mount read-only, templates
+# and static assets are embedded — so readOnlyRootFilesystem is safe.
+# Override per-field if your install needs different ids/caps.
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 1001
+  runAsGroup: 1001
+  fsGroup: 1001
+  seccompProfile:
+    type: RuntimeDefault
+
+securityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  capabilities:
+    drop:
+      - ALL
+
+service:
+  type: ClusterIP
+  port: 8080
+
+# CLI args. The chart passes `-c <mounted-config-path>` automatically;
+# anything here is appended.
+extraArgs: []
+
+# Gateway API HTTPRoute for exposing Compass HTTP UI. This is separate from
+# Compass's kubernetes source, which can discover existing Ingress objects.
+httpRoute:
+  enabled: false
+  annotations: {}
+  parentRefs:
+    - name: gateway
+      namespace: gateway-system
+      # sectionName: https
+  hostnames:
+    - compass.adinhodovic.com
+  # Default: route everything under "/" to Compass Service.
+  matches:
+    - path:
+        type: PathPrefix
+        value: /
+
+resources: {}
+  # limits:
+  #   cpu: 200m
+  #   memory: 256Mi
+  # requests:
+  #   cpu: 50m
+  #   memory: 64Mi
+
+# Liveness/readiness target the unauthenticated health endpoint.
+livenessProbe:
+  httpGet:
+    path: /health
+    port: http
+readinessProbe:
+  httpGet:
+    path: /health
+    port: http
+
+# Additional volumes/mounts on top of the config volume the chart adds
+# automatically.
+volumes: []
+# - name: foo
+#   secret:
+#     secretName: mysecret
+
+volumeMounts: []
+# - name: foo
+#   mountPath: /etc/foo
+#   readOnly: true
+
+nodeSelector: {}
+tolerations: []
+affinity: {}
+
+# ServiceMonitor for Prometheus Operator. /metrics is unauthenticated by
+# default (see chart README → auth) so scrapes work out of the box.
+serviceMonitor:
+  enabled: false
+  additionalLabels: {}
+  ## Default: scrape .Release.Namespace only. Set namespaceSelector.any:
+  ## true to scrape from every namespace.
+  namespace: ""
+  namespaceSelector: {}
+  scrapeInterval: 30s
+  # honorLabels: true
+  targetLabels: []
+  relabelings: []
+  metricRelabelings: []

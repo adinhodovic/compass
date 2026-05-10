@@ -1,0 +1,15 @@
+{{- /*
+panel_card renders the {{< panel service=X title=Y >}} shortcode output:
+a single Grafana iframe wrapped in a daisyUI card. Sized for a primary
+content block inside markdown prose (taller than the per-service
+detail-page panel, which is grid-packed two-up).
+
+Wrapped in `not-prose` so the card doesn't inherit prose typography
+from the surrounding markdown page.
+*/ -}}
+<article class="not-prose card bg-base-100 shadow-sm border border-base-300 my-4">
+  <div class="card-body p-4 gap-3">
+    <p class="card-title">{{ .Title }}</p>
+    <iframe class="grafana-panel w-full h-64 sm:h-80 rounded-md border border-base-300" title="{{ .Title }}" src="{{ .URL }}"></iframe>
+  </div>
+</article>

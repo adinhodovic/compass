@@ -1,0 +1,41 @@
+name: Docs
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "docs/**"
+      - "zensical.toml"
+      - ".github/workflows/docs.yml"
+  workflow_dispatch:
+
+# Newer commits supersede in-flight builds — the deployed site is always
+# the latest main. cancel-in-progress is safe here because the deploy is
+# a single artifact upload, not an incremental branch push.
+concurrency:
+  group: docs
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+jobs:
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/configure-pages@v5
+      - uses: actions/checkout@v6
+      - uses: astral-sh/setup-uv@v6
+      - run: uvx zensical build --clean
+      - uses: actions/upload-pages-artifact@v4
+        with:
+          path: site
+      - id: deployment
+        uses: actions/deploy-pages@v4

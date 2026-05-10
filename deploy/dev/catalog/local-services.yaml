@@ -1,0 +1,26 @@
+# Local-only services. These keys don't exist in the embedded catalog, so the
+# entries are added wholesale.
+
+internal-wiki:
+  description: Markdown wiki with runbooks, on-call rotations, and design notes.
+  icon: lucide:book-open
+  tags: [docs]
+
+ops-dashboard:
+  description: Aggregated home-grown ops view tying tickets, deploys, and alerts together.
+  icon: lucide:activity
+  tags: [ops, internal]
+
+# Demo Headscale nodes seeded by deploy/dev/docker-compose.yml's
+# headscale-init container. The Compass discovers them via the headscale
+# api source; these catalog entries fill in descriptions / icons so the
+# detail pages aren't empty.
+demo-laptop:
+  description: Fake Tailscale node, a laptop registered against the dev Headscale.
+  icon: lucide:laptop
+  tags: [headscale, demo]
+
+demo-server:
+  description: Fake Tailscale node, a server registered against the dev Headscale.
+  icon: lucide:server
+  tags: [headscale, demo]

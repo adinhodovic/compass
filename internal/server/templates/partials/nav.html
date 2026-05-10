@@ -1,0 +1,193 @@
+{{define "nav"}}
+<div class="navbar bg-base-200 shadow-sm sticky top-0 z-40" hx-boost="true">
+  <div class="container mx-auto navbar p-0 px-4">
+    <div class="navbar-start min-w-0 flex-1 md:flex-none">
+      <a class="btn btn-ghost text-base font-semibold min-w-0 px-2" href="/">
+        {{if .Organization.FullLogo}}
+        {{$fullLogo := logo .Organization.FullLogo .Organization.Name "organization"}}
+        {{if eq $fullLogo.Kind "image"}}
+        <img src="{{$fullLogo.URL}}" alt="{{.Organization.Name}}" class="h-6 max-w-32 object-contain" loading="lazy">
+        {{else}}
+        <span class="truncate">{{$fullLogo.Text}}</span>
+        {{end}}
+        {{else}}
+        {{$orgLogo := logo .Organization.Logo .Organization.Name "organization"}}
+        {{if eq $orgLogo.Kind "image"}}
+        <div class="avatar">
+          <div class="size-7 rounded"><img src="{{$orgLogo.URL}}" alt="" loading="lazy"></div>
+        </div>
+        {{else}}
+        <div class="avatar avatar-placeholder">
+          <div class="size-7 rounded bg-neutral text-neutral-content"><span class="text-xs">{{$orgLogo.Text}}</span></div>
+        </div>
+        {{end}}
+        <span class="truncate">{{.Organization.Name}}</span>
+        {{end}}
+      </a>
+    </div>
+    <div class="navbar-end gap-1 md:gap-2 flex-none">
+      {{/* Group 1: admin-configured header links. */}}
+      {{if .HeaderLinks}}
+      <div class="hidden md:flex items-center gap-1 shrink-0">
+        {{range .HeaderLinks}}
+        {{if .Links}}
+        <div class="dropdown dropdown-end">
+          <div tabindex="0" role="button" class="btn btn-ghost btn-sm gap-2">
+            {{if .Icon}}
+              {{$linkLogo := logo .Icon .Label "link"}}
+              {{if eq $linkLogo.Kind "image"}}
+                <img src="{{$linkLogo.URL}}" alt="" class="size-4" loading="lazy">
+              {{else}}
+                <span class="text-xs">{{$linkLogo.Text}}</span>
+              {{end}}
+            {{end}}
+            <span>{{.Label}}</span>
+            {{icon "lucide:chevron-down"}}
+          </div>
+          <ul tabindex="0" class="dropdown-content menu bg-base-100 rounded-box shadow-md mt-2 w-60 z-50">
+            {{range .Links}}
+            <li>
+              <a href="{{.URL}}"{{if .OpensInNewTab}} target="_blank" rel="noopener"{{end}}>
+                {{if .Icon}}{{icon .Icon}}{{else}}{{icon "lucide:external-link"}}{{end}}
+                {{.Label}}
+              </a>
+            </li>
+            {{end}}
+          </ul>
+        </div>
+        {{else}}
+        <a class="btn btn-ghost btn-sm gap-2"
+           href="{{.URL}}"
+           {{if .OpensInNewTab}}target="_blank" rel="noopener"{{end}}>
+          {{if .Icon}}
+            {{$linkLogo := logo .Icon .Label "link"}}
+            {{if eq $linkLogo.Kind "image"}}
+              <img src="{{$linkLogo.URL}}" alt="" class="size-4" loading="lazy">
+            {{else}}
+              <span class="text-xs">{{$linkLogo.Text}}</span>
+            {{end}}
+          {{end}}
+          <span>{{.Label}}</span>
+        </a>
+        {{end}}
+        {{end}}
+      </div>
+      <div class="hidden md:block h-7 w-px bg-base-content/20 shrink-0"></div>
+      {{end}}
+
+      {{/* Group 2: user-authored markdown pages.
+           Top-level *.md (Section.Slug == "") render as direct links;
+           sub-directories render as dropdowns with their pages inside. */}}
+      {{if .Pages}}
+      <div class="hidden md:flex items-center gap-1 shrink-0">
+        {{range .Pages}}
+        {{if eq .Slug ""}}
+          {{range .Pages}}
+          <a class="btn btn-ghost btn-sm gap-2" href="{{.URL}}">
+            {{icon "lucide:file-text"}}
+            <span>{{.Title}}</span>
+          </a>
+          {{end}}
+        {{else}}
+          <div class="dropdown dropdown-end">
+            <div tabindex="0" role="button" class="btn btn-ghost btn-sm gap-2">
+              {{icon "lucide:book-open"}}
+              <span>{{.Title}}</span>
+              {{icon "lucide:chevron-down"}}
+            </div>
+            <ul tabindex="0" class="dropdown-content menu bg-base-100 rounded-box shadow-md mt-2 w-56 z-50">
+              {{range .Pages}}<li><a href="{{.URL}}">{{.Title}}</a></li>{{end}}
+            </ul>
+          </div>
+        {{end}}
+        {{end}}
+      </div>
+      <div class="hidden md:block h-7 w-px bg-base-content/20 shrink-0"></div>
+      {{end}}
+
+      {{/* Group 3: built-in default pages (currently just Services). */}}
+      <div class="hidden md:flex items-center gap-1 shrink-0">
+        <a class="btn btn-ghost btn-sm" href="/services">
+          {{icon "lucide:layout-grid"}}
+          <span>Services</span>
+        </a>
+      </div>
+
+      {{/* Group 4: utility / toggles (search, debug, theme, identity). */}}
+      <div class="hidden md:block h-7 w-px bg-base-content/20 shrink-0"></div>
+      <div class="flex items-center gap-1 shrink-0">
+        <button class="btn btn-ghost btn-sm hidden md:inline-flex" type="button" x-on:click="window.dispatchEvent(new CustomEvent('open-command'))" aria-label="Open command palette">
+          {{icon "lucide:search"}}
+          <span>Search</span>
+          <kbd class="kbd kbd-sm">Ctrl+K</kbd>
+        </button>
+        {{if .DebugEnabled}}
+        <a class="btn btn-ghost btn-sm btn-square hidden md:inline-flex relative" href="/debug" aria-label="Debug">
+          {{icon "lucide:bug"}}
+          {{if .HasSourceErrors}}<span class="absolute top-1 right-1 size-2 rounded-full bg-error" aria-label="Source errors"></span>{{end}}
+        </a>
+        {{end}}
+        <button class="btn btn-ghost btn-sm md:hidden" type="button" x-on:click="window.dispatchEvent(new CustomEvent('open-command'))" aria-label="Open command palette">
+          {{icon "lucide:search"}}
+        </button>
+        <div class="tooltip tooltip-bottom" data-tip="Toggle theme">
+          <button class="btn btn-ghost btn-sm btn-square inline-flex items-center justify-center" type="button" x-on:click="toggleTheme()" aria-label="Toggle theme">
+            <span class="inline-flex items-center justify-center" x-show="theme === 'dark'">{{icon "lucide:sun"}}</span>
+            <span class="inline-flex items-center justify-center" x-show="theme !== 'dark'">{{icon "lucide:moon"}}</span>
+          </button>
+        </div>
+        {{if .User.LoggedIn}}
+        <div class="dropdown dropdown-end hidden md:block">
+          <button tabindex="0" class="btn btn-ghost btn-sm btn-square relative" type="button" aria-label="User menu">
+            {{icon "lucide:circle-user-round"}}
+            <span class="absolute bottom-1 right-1 size-2 rounded-full border border-base-200 bg-success"></span>
+          </button>
+          <div tabindex="0" class="dropdown-content z-50 mt-3 w-64 overflow-hidden rounded-box border border-base-300 bg-base-100 shadow-md">
+            <div class="px-4 py-3">
+              <p class="text-xs uppercase tracking-wide text-base-content/60">Signed in</p>
+              <p class="mt-1 font-semibold truncate">{{if .User.Name}}{{.User.Name}}{{else}}{{.User.Email}}{{end}}</p>
+              {{if and .User.Name .User.Email}}<p class="text-sm text-base-content/60 truncate">{{.User.Email}}</p>{{end}}
+            </div>
+          </div>
+        </div>
+        {{end}}
+        <div class="dropdown dropdown-end md:hidden" x-on:click.outside="closeMobileMenu()" x-on:keydown.escape.window="closeMobileMenu()">
+          <button class="btn btn-ghost btn-sm btn-square" type="button" x-on:click="toggleMobileMenu()" x-bind:aria-expanded="mobileMenuOpen" aria-label="Open navigation menu">
+            {{icon "lucide:menu"}}
+          </button>
+          <ul class="dropdown-content menu bg-base-100 rounded-box shadow-md mt-2 w-64 z-50" x-show="mobileMenuOpen" x-transition x-cloak>
+            {{if .User.LoggedIn}}
+            <li class="px-2 pt-2 pb-1">
+              <div class="block">
+                <p class="text-xs uppercase tracking-wide text-base-content/60">Signed in</p>
+                <p class="truncate font-medium">{{if .User.Name}}{{.User.Name}}{{else}}{{.User.Email}}{{end}}</p>
+              </div>
+            </li>
+            <li></li>
+            {{end}}
+            <li><a href="/services" x-on:click="closeMobileMenu()">{{icon "lucide:layout-grid"}}Services</a></li>
+            {{if .DebugEnabled}}<li><a href="/debug" x-on:click="closeMobileMenu()">{{icon "lucide:bug"}}Debug{{if .HasSourceErrors}}<span class="badge badge-error badge-xs">errors</span>{{end}}</a></li>{{end}}
+            {{if .HeaderLinks}}
+            <li class="menu-title">Links</li>
+            {{range .HeaderLinks}}
+              {{if .Links}}
+              <li class="menu-title">{{.Label}}</li>
+              {{range .Links}}<li><a href="{{.URL}}"{{if .OpensInNewTab}} target="_blank" rel="noopener"{{end}} x-on:click="closeMobileMenu()">{{if .Icon}}{{icon .Icon}}{{else}}{{icon "lucide:external-link"}}{{end}}{{.Label}}</a></li>{{end}}
+              {{else}}
+              <li><a href="{{.URL}}"{{if .OpensInNewTab}} target="_blank" rel="noopener"{{end}} x-on:click="closeMobileMenu()">{{if .Icon}}{{icon .Icon}}{{else}}{{icon "lucide:external-link"}}{{end}}{{.Label}}</a></li>
+              {{end}}
+            {{end}}
+            {{end}}
+            {{if .Pages}}
+            <li class="menu-title">Pages</li>
+            {{range .Pages}}
+              {{range .Pages}}<li><a href="{{.URL}}" x-on:click="closeMobileMenu()">{{icon "lucide:file-text"}}{{.Title}}</a></li>{{end}}
+            {{end}}
+            {{end}}
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{{end}}

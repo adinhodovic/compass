@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "compass.fullname" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "compass.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.service.type }}
+  ports:
+    - port: {{ .Values.service.port }}
+      targetPort: http
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "compass.selectorLabels" . | nindent 4 }}

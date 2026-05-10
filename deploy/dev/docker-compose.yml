@@ -1,0 +1,293 @@
+# Dev stack for exercising every Compass source end-to-end.
+#
+#   docker compose -f deploy/dev/docker-compose.yml up -d
+#   HEADSCALE_API_KEY=$(cat deploy/dev/.headscale-key/apikey.txt) go run ./cmd/compass -c deploy/dev/compass.yaml
+#
+# Compass runs on the host so it can read /var/run/docker.sock and
+# reach Caddy's admin API on localhost:2019.
+
+services:
+  # Exercises the api source: Compass reads Caddy's admin API and
+  # turns each route into a service.
+  caddy:
+    image: caddy:2-alpine
+    command: caddy run --config /etc/caddy/Caddyfile --adapter caddyfile
+    restart: unless-stopped
+    ports:
+      - "2019:2019" # admin API (consumed by Compass's api source)
+      - "8081:80"   # serves a tiny site so the URL works
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+    labels:
+      compass.adinhodovic.com/name: "Caddy"
+      compass.adinhodovic.com/urls: "http://localhost:8081"
+      compass.adinhodovic.com/tags: "proxy,web"
+      compass.adinhodovic.com/icon: "simple-icons:caddy"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O- http://localhost:2019/config/ >/dev/null"]
+      interval: 5s
+      timeout: 3s
+      retries: 6
+      start_period: 5s
+
+  # Exercises the docker source's Traefik-rule fallback (see whoami).
+  # No healthcheck: the official image is scratch-based and the
+  # `traefik healthcheck` subcommand needs the static-config flags
+  # replayed for the ping endpoint to resolve, which is more compose
+  # plumbing than this is worth. Traefik comes up fast; if Compass
+  # refreshes before it's ready, the next tick picks it up.
+  traefik:
+    image: traefik:v3.0
+    restart: unless-stopped
+    command:
+      - --api.insecure=true
+      - --providers.docker=true
+      - --providers.docker.exposedbydefault=false
+      - --entrypoints.web.address=:80
+    ports:
+      - "8082:80"   # routed traffic
+      - "8083:8080" # dashboard
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    labels:
+      compass.adinhodovic.com/name: "Traefik"
+      compass.adinhodovic.com/urls: "http://localhost:8083"
+      compass.adinhodovic.com/tags: "proxy"
+      compass.adinhodovic.com/icon: "simple-icons:traefikproxy"
+
+  # No compass.adinhodovic.com/urls label — the docker source must derive
+  # http://whoami.localhost from the traefik.http.routers.whoami.rule label.
+  whoami:
+    image: traefik/whoami
+    restart: unless-stopped
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.whoami.rule=Host(`whoami.localhost`)"
+      - "traefik.http.routers.whoami.entrypoints=web"
+      - "compass.adinhodovic.com/name=Whoami"
+      - "compass.adinhodovic.com/tags=demo"
+
+  # Verifies com.docker.compose.project auto-tagging and the
+  # com.docker.compose.service name fallback in the docker source.
+  echo:
+    image: hashicorp/http-echo
+    restart: unless-stopped
+    command: -text="hello from echo"
+    ports:
+      - "8084:5678"
+    labels:
+      compass.adinhodovic.com/urls: "http://localhost:8084"
+      compass.adinhodovic.com/tags: "demo"
+
+  # Provides the embedded Grafana panels referenced from
+  # compass.yaml's static source.
+  grafana:
+    image: grafana/grafana:12.2.0
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Viewer
+      GF_AUTH_DISABLE_LOGIN_FORM: "true"
+      GF_SECURITY_ALLOW_EMBEDDING: "true"
+    volumes:
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
+    labels:
+      compass.adinhodovic.com/name: "Grafana"
+      compass.adinhodovic.com/urls: "http://localhost:3000"
+      compass.adinhodovic.com/tags: "monitoring,observability"
+      compass.adinhodovic.com/icon: "selfhst:grafana"
+      compass.adinhodovic.com/grafana-panels: "Golden Signals Traffic=http://localhost:3000/d-solo/golden-signals/the-four-golden-signals?orgId=1&from=now-6h&to=now&timezone=browser&panelId=2"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O- http://localhost:3000/api/health >/dev/null"]
+      interval: 5s
+      timeout: 3s
+      retries: 6
+      start_period: 10s
+
+  # Exercises the api source's items_mode: values for map-of-objects
+  # responses. Services are auto-registered from consul-services.json
+  # on startup.
+  consul:
+    image: hashicorp/consul:1.20
+    restart: unless-stopped
+    command: agent -dev -client=0.0.0.0 -log-level=warn -config-dir=/consul/config
+    ports:
+      - "8500:8500" # HTTP API consumed by Compass
+    volumes:
+      - ./consul-services.json:/consul/config/services.json:ro
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O- http://localhost:8500/v1/status/leader >/dev/null"]
+      interval: 5s
+      timeout: 3s
+      retries: 6
+      start_period: 5s
+
+  # Self-hosted Tailscale coordination server. The named volume
+  # persists state across dev-up cycles; headscale-init idempotently
+  # bootstraps a user, two demo nodes, and an API key.
+  headscale:
+    image: headscale/headscale:0.28.0
+    command: serve
+    restart: unless-stopped
+    ports:
+      - "8085:8080"  # HTTP API (legacy api-source recipe still works)
+      - "50443:50443" # gRPC API consumed by the headscale source
+      - "9091:9090"  # Prometheus metrics
+    volumes:
+      - ./headscale-config.yaml:/etc/headscale/config.yaml:ro
+      - headscale-socket:/var/run/headscale
+      - headscale-data:/var/lib/headscale
+    healthcheck:
+      test: ["CMD", "/ko-app/headscale", "users", "list"]
+      interval: 2s
+      timeout: 2s
+      retries: 30
+      start_period: 3s
+
+  # One-shot bootstrap. Builds a tiny alpine+headscale+jq image
+  # (Dockerfile.headscale-init) because the upstream headscale image is
+  # distroless. Sleeps after bootstrapping so `compose up --wait` sees
+  # it running. The API key is written into deploy/dev/.headscale-key so
+  # `make dev` can export it for Compass.
+  headscale-init:
+    build:
+      context: .
+      dockerfile: Dockerfile.headscale-init
+    image: compass-dev-headscale-init:local
+    depends_on:
+      headscale:
+        condition: service_healthy
+    volumes:
+      - ./headscale-config.yaml:/etc/headscale/config.yaml:ro
+      - headscale-socket:/var/run/headscale
+      # Bind-mount onto the host so make/dev shell commands can export
+      # HEADSCALE_API_KEY for Compass.
+      - ./.headscale-key:/state
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        set -e
+        KEY_FILE=/state/apikey.txt
+        # `users create dev` succeeds only when the user doesn't exist —
+        # i.e. when headscale-data is a fresh volume. That's the signal
+        # to discard a cached API key from a previous compose generation;
+        # the new DB won't recognize it.
+        if headscale users create dev >/dev/null 2>&1; then
+          rm -f "$$KEY_FILE"
+        fi
+        # 0.28's two-step registration:
+        #   1. debug create-node creates a pending registration (24-char key)
+        #   2. nodes register finalizes it; only then does /api/v1/node list it
+        # Skip if a node with the same name already exists — debug
+        # create-node would otherwise auto-suffix on name conflict.
+        existing=$$(headscale nodes list -o json 2>/dev/null || echo '[]')
+        for entry in demo-laptop:aaaaaaaaaaaaaaaaaaaaaaaa demo-server:bbbbbbbbbbbbbbbbbbbbbbbb; do
+          name=$${entry%:*}
+          key=$${entry#*:}
+          echo "$$existing" | jq -e --arg name "$$name" 'any(.[]; .name == $$name or .given_name == $$name)' >/dev/null && continue
+          headscale debug create-node --name $$name --user dev --key $$key >/dev/null 2>&1 || true
+          headscale nodes register --user dev --key $$key >/dev/null 2>&1 || true
+          existing=$$(headscale nodes list -o json 2>/dev/null || echo '[]')
+        done
+        # Reuse the key when the headscale DB volume survived; otherwise
+        # mint a fresh one and stash it.
+        if [ -s "$$KEY_FILE" ]; then
+          cat "$$KEY_FILE"
+        else
+          KEY=$$(headscale apikeys create --expiration 720h)
+          echo "$$KEY" > "$$KEY_FILE"
+          echo "$$KEY"
+        fi
+        exec sleep infinity
+
+  # Local k3s cluster for the kubernetes source's inline-credentials code
+  # path (cluster_url + bearer_token_file + cluster_ca_file). The
+  # kubeconfig source already in compass.yaml exercises the kubeconfig
+  # code path against whatever ~/.kube/config points at; this one fills
+  # the dark spot. traefik/servicelb/metrics-server are disabled — the
+  # demo manifests only need the apiserver to accept Gateway / HTTPRoute
+  # objects, no controller has to reconcile them.
+  k3s:
+    image: rancher/k3s:v1.31.4-k3s1
+    command:
+      - server
+      - --disable=traefik
+      - --disable=servicelb
+      - --disable=metrics-server
+      - --tls-san=127.0.0.1
+      - --write-kubeconfig-mode=644
+    privileged: true
+    restart: unless-stopped
+    ports:
+      # 16443 (microk8s convention) — leaves 6443 free for any kind /
+      # minikube the contributor already has running locally.
+      - "16443:6443"
+    volumes:
+      - k3s-data:/var/lib/rancher/k3s
+      # k3s auto-applies any YAML at the top of its manifests dir on
+      # boot (with retries until CRDs/dependencies exist). Mounts are
+      # per-file because a dir mount would shadow k3s's own bundled
+      # manifests (CoreDNS, etc.). Numeric prefix gives a stable lexical
+      # apply order; k3s retries so strict ordering isn't required.
+      - ./k8s/crds/gateway-api.yaml:/var/lib/rancher/k3s/server/manifests/00-gateway-api.yaml:ro
+      - ./k8s/rbac.yaml:/var/lib/rancher/k3s/server/manifests/10-rbac.yaml:ro
+      - ./k8s/gateway.yaml:/var/lib/rancher/k3s/server/manifests/20-gateway.yaml:ro
+      - ./k8s/routes.yaml:/var/lib/rancher/k3s/server/manifests/30-routes.yaml:ro
+    tmpfs:
+      - /run
+      - /var/run
+    healthcheck:
+      test: ["CMD-SHELL", "kubectl get --raw=/readyz"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+      start_period: 10s
+
+  # One-shot bootstrap: waits for the auto-deployed compass-reader SA
+  # to exist, then mints a long-lived token + extracts the cluster CA
+  # into deploy/dev/.kube/ for compass.yaml's inline source. Reuses the
+  # rancher/k3s image since it already ships kubectl.
+  #
+  # `network_mode: service:k3s` shares the k3s container's network
+  # namespace so admin.kubeconfig's `https://127.0.0.1:6444` URL
+  # resolves correctly (it's k3s's supervisor port, only reachable on
+  # k3s's own loopback) and the apiserver TLS cert (which only SANs
+  # 127.0.0.1) validates without us needing to extend it.
+  k3s-init:
+    image: rancher/k3s:v1.31.4-k3s1
+    depends_on:
+      k3s:
+        condition: service_healthy
+    network_mode: "service:k3s"
+    volumes:
+      - k3s-data:/var/lib/rancher/k3s:ro
+      - ./.kube:/state
+    entrypoint: ["/bin/sh", "-c"]
+    environment:
+      KUBECONFIG: /var/lib/rancher/k3s/server/cred/admin.kubeconfig
+    command:
+      - |
+        set -e
+        # k3s applies our manifests via auto-deploy; the SA can lag
+        # /readyz by a tick, so wait for it before minting a token.
+        until kubectl get sa compass-reader >/dev/null 2>&1; do sleep 1; done
+        # 1y TTL — local dev stack, refresh with `make dev-up` if it
+        # ever actually expires.
+        kubectl create token compass-reader --duration=8760h > /state/token
+        # admin.kubeconfig uses a path-reference for the CA, not inline
+        # data, so copy the source PEM directly.
+        cp /var/lib/rancher/k3s/server/tls/server-ca.crt /state/ca.crt
+        # Compass runs on the host (not root inside the container) and
+        # needs to read both files. Force 644 explicitly because `>`
+        # preserves a pre-existing mode if the file is being overwritten
+        # from a prior run.
+        chmod 644 /state/token /state/ca.crt
+        exec sleep infinity
+
+volumes:
+  headscale-socket:
+  headscale-data:
+  k3s-data:

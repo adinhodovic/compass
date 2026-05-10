@@ -1,0 +1,21 @@
+@import "tailwindcss";
+@source "../internal/server/templates/**/*.html";
+@source "../internal/pages/**/*.html";
+@source "../internal/pages/pages.go";
+@plugin "@tailwindcss/typography";
+@plugin "daisyui";
+
+[x-cloak] {
+  display: none !important;
+}
+
+/* Keep the vertical scrollbar gutter reserved at all times. Without
+   this, a layout change that drops the page below viewport height
+   (e.g. toggling Group by, collapsing a group) hides the scrollbar and
+   shifts every centered element ~15px to the right, which reads as the
+   whole UI re-indenting. `overflow-y: scroll` is the universally
+   supported fallback for browsers that don't honor scrollbar-gutter. */
+html {
+  overflow-y: scroll;
+  scrollbar-gutter: stable;
+}

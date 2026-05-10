@@ -1,0 +1,166 @@
+{{define "base-start"}}
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#570df8">
+  {{$siteLogo := logo .Organization.Logo .Organization.Name "organization"}}
+  {{if eq $siteLogo.Kind "image"}}
+  <link rel="icon" href="{{$siteLogo.URL}}">
+  {{else}}
+  {{/* Inline SVG favicon fallback for text-based logos: a tinted square
+       with the org initials. Avoids browsers showing the default blank
+       favicon and saves a network round-trip. */}}
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%232563eb'/%3E%3Ctext x='16' y='21' font-family='system-ui,sans-serif' font-size='14' font-weight='600' fill='white' text-anchor='middle'%3E{{$siteLogo.Text}}%3C/text%3E%3C/svg%3E">
+  {{end}}
+  <link rel="manifest" href="/manifest.webmanifest">
+  <script>
+    // Set the theme as early as possible to avoid a flash of the wrong
+    // colors on initial render. Primary color (if any) comes from
+    // compass.yaml's ui.primary_color and is rendered server-side as an
+    // inline style on <html>, so no client work needed for it.
+    (() => {
+      let stored = null;
+      try { stored = localStorage.getItem("compass-theme"); } catch {}
+      const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+      const theme = (stored === "light" || stored === "dark")
+        ? stored
+        : (prefersDark ? "dark" : "light");
+      document.documentElement.setAttribute("data-theme", theme);
+    })();
+  </script>
+  <link rel="stylesheet" href="/static/app.css">
+  <link rel="stylesheet" href="/static/chroma.css">
+  {{if .PrimaryColor}}
+  <style>
+    /* Dark variant: same hue, lifted lightness, slightly less chroma.
+       Content: tinted near-white in primary's hue family. */
+    :root { --compass-primary: {{.PrimaryColor}}; }
+    [data-theme="light"] {
+      --color-primary: var(--compass-primary);
+      --color-primary-content: oklch(from var(--color-primary) 98% 0.005 h);
+    }
+    [data-theme="dark"] {
+      --color-primary: oklch(from var(--compass-primary) calc(l + 0.10) calc(c * 0.90) h);
+      --color-primary-content: oklch(from var(--color-primary) 98% 0.005 h);
+    }
+  </style>
+  {{end}}
+  <script src="/static/iconify-icon.min.js" defer></script>
+  <script src="/static/htmx.min.js" defer></script>
+  <script type="module">import Fuse from "/static/fuse.min.mjs"; window.Fuse = Fuse;</script>
+  <script src="/static/app.js" defer></script>
+  <script src="/static/alpine.min.js" defer></script>
+  <title>{{if and .Meta.Title (ne .Meta.Title .Organization.Name)}}{{.Meta.Title}} · {{.Organization.Name}}{{else}}{{.Organization.Name}}{{end}}</title>
+  <meta name="description" content="{{.Meta.Description}}">
+  <meta property="og:site_name" content="{{.Organization.Name}}">
+  <meta property="og:title" content="{{.Meta.Title}}">
+  <meta property="og:description" content="{{.Meta.Description}}">
+  <meta property="og:type" content="{{.Meta.Type}}">
+  {{if .Meta.URL}}<meta property="og:url" content="{{.Meta.URL}}">
+  <link rel="canonical" href="{{.Meta.URL}}">{{end}}
+  {{if .Meta.Image}}<meta property="og:image" content="{{.Meta.Image}}">{{end}}
+  <meta name="twitter:card" content="{{if .Meta.Image}}summary_large_image{{else}}summary{{end}}">
+  <meta name="twitter:title" content="{{.Meta.Title}}">
+  <meta name="twitter:description" content="{{.Meta.Description}}">
+  {{if .Meta.Image}}<meta name="twitter:image" content="{{.Meta.Image}}">{{end}}
+</head>
+<body class="antialiased bg-base-100 text-base-content min-h-screen" x-data="compassShell()" data-user="{{if .User.LoggedIn}}{{if .User.Name}}{{.User.Name}}{{else}}{{.User.Email}}{{end}}{{else}}anon{{end}}">
+<script type="application/json" id="command-data">{{commandIndex .Base}}</script>
+{{template "nav" .}}
+<main class="container mx-auto px-3 py-6 sm:px-4 sm:py-10 min-h-[calc(100vh-12rem)]">
+{{end}}
+
+{{define "base-end"}}
+</main>
+{{$siteLogo := logo .Organization.Logo .Organization.Name "organization"}}
+<footer class="footer footer-center bg-base-200 text-base-content/60 p-6 mt-12 text-sm">
+  <aside class="flex flex-col items-center gap-3 sm:flex-row sm:flex-wrap sm:justify-center">
+    <a class="link-hover inline-flex items-center gap-2 font-medium text-base-content/80" href="/" aria-label="{{.Organization.Name}} home">
+      {{if .Organization.FullLogo}}
+      {{$fullLogo := logo .Organization.FullLogo .Organization.Name "organization"}}
+      {{if eq $fullLogo.Kind "image"}}
+      <img src="{{$fullLogo.URL}}" alt="{{.Organization.Name}}" class="h-3.5 max-w-24 object-contain" loading="lazy">
+      {{else}}
+      <span>{{$fullLogo.Text}}</span>
+      {{end}}
+      {{else}}
+      {{if eq $siteLogo.Kind "image"}}
+      <span class="avatar"><span class="size-3.5 rounded"><img src="{{$siteLogo.URL}}" alt="" loading="lazy"></span></span>
+      {{else}}
+      <span class="avatar avatar-placeholder"><span class="size-3.5 rounded bg-neutral text-[8px] text-neutral-content">{{$siteLogo.Text}}</span></span>
+      {{end}}
+      <span>{{.Organization.Name}}</span>
+      {{end}}
+    </a>
+    <span class="hidden sm:inline" aria-hidden="true">·</span>
+    <nav class="flex flex-wrap items-center justify-center gap-x-3 gap-y-1" aria-label="Site">
+      <a class="link link-hover" href="/services">Services</a>
+      {{if .DebugEnabled}}<a class="link link-hover" href="/debug">Debug</a>{{end}}
+      {{range .FooterLinks}}
+      <a class="link link-hover" href="{{.URL}}"{{if .OpensInNewTab}} target="_blank" rel="noopener"{{end}}>{{.Label}}</a>
+      {{end}}
+    </nav>
+    <span class="hidden sm:inline" aria-hidden="true">·</span>
+    <nav class="flex flex-wrap items-center justify-center gap-x-3 gap-y-1" aria-label="Resources">
+      <a class="link link-hover" href="https://adinhodovic.github.io/compass" target="_blank" rel="noopener">Documentation</a>
+      <a class="link link-hover" href="https://github.com/adinhodovic/compass" target="_blank" rel="noopener">Compass</a>
+    </nav>
+  </aside>
+</footer>
+<div class="toast toast-end z-50" x-show="toast.show" x-transition>
+  <div class="alert alert-success">
+    <span x-text="toast.message"></span>
+  </div>
+</div>
+<div x-data="compassCommand()" x-init="init()" x-on:open-command.window="openCommand()" x-on:keydown.escape.window="open = false">
+  <dialog class="modal" role="dialog" aria-modal="true" aria-labelledby="command-palette-label" x-bind:class="open ? 'modal-open' : ''">
+    <div class="modal-box max-w-[52rem] px-3 sm:px-4 pt-0 pb-3 sm:pb-4 w-[calc(100vw-1rem)] sm:w-auto sm:min-w-[40rem] md:min-w-[44rem] lg:min-w-[48rem] max-h-[80vh] overflow-y-auto">
+      <div class="sticky top-0 z-10 bg-base-100 -mx-3 sm:-mx-4 px-3 sm:px-4 pt-3 sm:pt-4 pb-3">
+        <span id="command-palette-label" class="sr-only">Command palette</span>
+        <label class="input w-full">
+          <span class="sr-only">Search services and pages</span>
+          {{icon "lucide:search"}}
+          <input x-ref="commandInput" type="search" class="grow" placeholder="Search services and pages" aria-label="Search services and pages" x-model="query"
+            x-on:keydown.arrow-down.prevent="move(1)"
+            x-on:keydown.arrow-up.prevent="move(-1)"
+            x-on:keydown.enter.prevent="commit()">
+          <kbd class="kbd kbd-sm">esc</kbd>
+        </label>
+      </div>
+      <ul class="menu w-full flex-nowrap">
+        <template x-for="group in groupedResults()" :key="group.title">
+          <div>
+            <li class="menu-title" x-text="group.title"></li>
+            <template x-for="item in group.items" :key="item.value">
+              <li>
+                <a class="gap-3"
+                   x-bind:class="results().indexOf(item) === activeIndex ? 'bg-base-200' : ''"
+                   x-on:mouseenter="activeIndex = results().indexOf(item)"
+                   x-on:click.prevent="select(item)"
+                   href="#">
+                  {{/* Two static iconify-icons + x-show to avoid the
+                       x-bind:icon timing race against iconify-icon's
+                       connectedCallback (binds set the attribute after
+                       the custom element has already inspected it,
+                       leaving some result rows blank). */}}
+                  <iconify-icon class="text-base-content/60" icon="lucide:file-text" x-show="item.type === 'page'"></iconify-icon>
+                  <iconify-icon class="text-base-content/60" icon="lucide:box" x-show="item.type !== 'page'"></iconify-icon>
+                  <span class="min-w-0 flex-1 truncate" x-text="item.label"></span>
+                  <span class="badge badge-ghost badge-sm hidden sm:inline-flex" x-text="item.type"></span>
+                  <span class="hidden text-xs text-base-content/60 sm:inline" x-show="item.section" x-text="item.section"></span>
+                </a>
+              </li>
+            </template>
+          </div>
+        </template>
+        <template x-if="!results().length">
+          <li class="menu-disabled px-4 py-3">No matches</li>
+        </template>
+      </ul>
+    </div>
+    <form method="dialog" class="modal-backdrop" x-on:click="open = false"><button>close</button></form>
+  </dialog>
+</div>
+</body></html>{{end}}

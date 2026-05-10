@@ -1,0 +1,55 @@
+{{- /*
+service_cards renders the {{< services >}} shortcode output: a 3-up card
+grid of services that mirrors the home dashboard's service card style.
+The interactive bits from the dashboard (favorite toggle, copy URL, tag
+filter buttons) are intentionally omitted — embed cards are static HTML
+without Alpine state.
+
+Wrapped in `not-prose` so the cards don't inherit prose typography from
+the surrounding markdown page.
+*/ -}}
+{{- if .Cards -}}
+<div class="not-prose grid gap-4 sm:grid-cols-2 lg:grid-cols-3 my-4">
+{{- range .Cards }}{{ $s := .Service }}{{ $l := .Logo }}
+  <article class="card bg-base-100 shadow-sm hover:shadow-md transition-shadow border border-base-300">
+    <div class="card-body gap-4">
+      <div class="flex items-start gap-4">
+        {{- if eq $l.Kind "image" }}
+        <div class="avatar"><div class="w-10 rounded-lg"><img src="{{ $l.URL }}" alt="{{ $s.Name }} logo" loading="lazy"></div></div>
+        {{- else }}
+        <div class="avatar avatar-placeholder"><div class="bg-neutral text-neutral-content w-10 rounded-lg"><span class="text-sm">{{ $l.Text }}</span></div></div>
+        {{- end }}
+        <div class="min-w-0 flex-1">
+          <h3 class="card-title truncate">{{ $s.Name }}</h3>
+          {{- if $s.Source }}
+          <span class="badge badge-outline badge-sm mt-1">{{ $s.Source }}</span>
+          {{- end }}
+        </div>
+      </div>
+      {{- if $s.Description }}
+      <p class="line-clamp-3 text-base-content/80">{{ $s.Description }}</p>
+      {{- else }}
+      <p class="text-sm italic text-base-content/50">No description provided.</p>
+      {{- end }}
+      {{- if $s.Tags }}
+      <div class="flex flex-wrap gap-1.5">
+        {{- range $index, $tag := $s.Tags }}
+          {{- if eq $index 0 }}
+          <span class="badge badge-primary badge-sm border-primary bg-primary text-primary-content">{{ $tag }}</span>
+          {{- else }}
+          <span class="badge badge-outline badge-sm border-primary/40 text-primary">{{ $tag }}</span>
+          {{- end }}
+        {{- end }}
+      </div>
+      {{- end }}
+      <div class="card-actions mt-auto pt-2 border-t border-base-300 items-center">
+        <a class="btn btn-primary btn-sm" href="{{ $s.URL }}">{{ icon "lucide:external-link" }}Open</a>
+        <a class="btn btn-sm btn-ghost" href="/services/{{ $s.ID }}">{{ icon "lucide:info" }}Details</a>
+      </div>
+    </div>
+  </article>
+{{- end }}
+</div>
+{{- else -}}
+<p class="text-sm italic text-base-content/60">No services match this filter.</p>
+{{- end -}}

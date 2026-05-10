@@ -1,0 +1,34 @@
+# compass-reader: minimum RBAC for the Compass kubernetes source's
+# inline-credentials path. get/list/watch on the GVRs that
+# defaultRouteResources() registers (Gateway API HTTPRoute / GRPCRoute
+# and core Ingress). Cluster-scoped because the source defaults to
+# auto_discover_all across every namespace.
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: compass-reader
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: compass-reader
+rules:
+  - apiGroups: ["gateway.networking.k8s.io"]
+    resources: ["httproutes", "grpcroutes", "gateways"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["networking.k8s.io"]
+    resources: ["ingresses"]
+    verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: compass-reader
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: compass-reader
+subjects:
+  - kind: ServiceAccount
+    name: compass-reader
+    namespace: default

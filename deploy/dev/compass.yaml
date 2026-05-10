@@ -1,0 +1,165 @@
+organization:
+  name: Compass
+  description: Local dev Compass with Docker Compose, Caddy admin API, Kubernetes, and Tailscale sources.
+  logo: /static/brand/favicon.svg
+  full_logo: /static/brand/compass-logo.svg
+
+ui:
+  default_group_by: source
+
+# Dev-only basic auth so the signed-in UI is visible locally.
+# Username: admin / password: admin
+auth:
+  basic:
+    users:
+      - name: admin
+        password_hash: $2a$10$He3AU65PBOkfE3oeq0dRxuYvEbBkWECslj3JchYXRVAAqoA6FIaAu
+
+# Catalog overrides merged onto the embedded base in lexical order.
+catalog:
+  path: catalog
+
+# Markdown pages. Each *.md becomes /pages/{slug}.
+pages:
+  dir: pages
+
+# Render pages/home.md at "/" instead of the services dashboard. The
+# services dashboard is still reachable at /services.
+home:
+  page: home
+
+services:
+  sources:
+    # Demonstrates the full Service shape, including catalog-backfilled
+    # fields when icon/description are omitted.
+    - type: static
+      name: manual
+      tags: [homelab]
+      services:
+        - name: Grafana
+          url: http://localhost:3000
+          tags: [core, monitoring]
+          metadata:
+            environment: dev
+            owner: platform
+          panels:
+            - title: Golden Signals Traffic
+              url: http://localhost:3000/d-solo/golden-signals/the-four-golden-signals?orgId=1&from=now-6h&to=now&timezone=browser&panelId=2
+        - name: Internal Wiki
+          url: http://localhost:8081
+          tags: [docs]
+          description: Markdown wiki with runbooks and on-call rotations.
+          icon: lucide:book-open
+        - name: Pi-hole
+          url: http://localhost:8082/admin
+          tags: [network, dns, compass, backend, ingress, egress, pi, homelab, full-example]
+          # Catalog provides icon, description, and canonical "Pi-hole" name.
+        - name: Duplicate Demo
+          url: http://localhost:8083
+          tags: [demo]
+          description: First duplicate service for local UI testing.
+          icon: lucide:copy
+
+    - type: static
+      name: lab
+      tags: [homelab]
+      services:
+        - name: Duplicate Demo
+          url: http://localhost:8084
+          tags: [demo]
+          description: Second duplicate service for local UI testing.
+          icon: lucide:copy
+
+    # Exercises the docker source: compass.adinhodovic.com/urls labels plus
+    # the Traefik Host(...) rule fallback (see whoami in compose).
+    - type: docker
+      name: local
+      tags: [docker, homelab]
+      docker:
+        host: /var/run/docker.sock
+        auto_discover_all: true
+        url_scheme: http
+
+    # Exercises the api source against a flat array (Caddy's
+    # /config/apps/http/servers/srv0/routes).
+    - type: api
+      name: caddy
+      tags: [caddy, proxy]
+      endpoint: http://localhost:2019/config/apps/http/servers/srv0/routes
+      mapping:
+        url_scheme: http
+        fields:
+          name: "match.0.host.0"
+          url: "match.0.host.0"
+
+    # Exercises items_mode: values for map-of-objects responses (Consul's
+    # /v1/agent/services). Pre-registered services live in
+    # consul-services.json.
+    - type: api
+      name: consul
+      tags: [consul, service-mesh]
+      endpoint: http://localhost:8500/v1/agent/services
+      mapping:
+        items_mode: values
+        fields:
+          name: Service
+          url: Meta.url
+          tags: Tags
+
+    # Exercises the headscale source over gRPC. `make dev` exports
+    # HEADSCALE_API_KEY from the headscale-init bootstrap output.
+    - type: headscale
+      name: headscale
+      tags: [headscale, vpn]
+      headscale:
+        address: localhost:50443
+        api_key: ${HEADSCALE_API_KEY}
+        insecure: true
+        url_scheme: http
+        device_tags: [node]
+
+    # Talks to whatever cluster KUBECONFIG / ~/.kube/config points at.
+    # Exercises the kubeconfig code path. Skipped automatically when no
+    # kubeconfig is present.
+    - type: kubernetes
+      name: cluster
+      kubernetes:
+        namespaces: []
+        auto_discover_all: true
+
+    # Inline-credentials path against the in-compose k3s cluster.
+    # deploy/dev/.kube/{token,ca.crt} are written by the k3s-init
+    # bootstrap container; the token has a 1y TTL.
+    - type: kubernetes
+      name: local
+      tags: [kubernetes, gateway-api]
+      kubernetes:
+        cluster_url: https://127.0.0.1:16443
+        bearer_token_file: .kube/token
+        cluster_ca_file: .kube/ca.crt
+        namespaces: []
+        auto_discover_all: true
+
+    # Reads TAILSCALE_TAILNET_ID and TAILSCALE_OAUTH_CLIENT_ID/SECRET
+    # from the environment. Skipped automatically if creds aren't set.
+    - type: tailscale
+      name: tailnet
+      tailscale:
+        url_scheme: https
+        tags: [tailscale]
+        include_services: false
+        include_devices: true
+        device_tags: [node]
+
+    # Intentionally points at a port nothing listens on. Exercises the
+    # /debug page's error rendering and the registry's "one source
+    # failure doesn't crash the binary" guarantee. Connection refused
+    # returns fast, so this doesn't slow the boot load.
+    - type: api
+      name: broken
+      tags: [debug]
+      endpoint: http://127.0.0.1:1/intentionally-unreachable
+      mapping:
+        fields:
+          name: name
+          url: url

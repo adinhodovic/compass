@@ -1,0 +1,28 @@
+organization:
+  name: Compass E2E
+  description: Browser test for Compass
+  logo: lucide:test-tube
+
+ui:
+  default_group_by: tags
+
+services:
+  sources:
+    - type: static
+      name: manual
+      services:
+        - name: Grafana
+          url: https://grafana.example.test
+          tags: [monitoring, core]
+          description: Dashboards and observability context.
+          icon: lucide:bar-chart-3
+        - name: Prometheus
+          url: https://prometheus.example.test
+          tags: [monitoring]
+          description: Metrics and PromQL.
+          icon: lucide:activity
+        - name: Wiki
+          url: https://wiki.example.test
+          tags: [docs]
+          description: Internal documentation.
+          icon: lucide:book-open

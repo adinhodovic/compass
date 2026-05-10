@@ -1,0 +1,41 @@
+{{define "page"}}{{template "base-start" .}}
+<div class="grid gap-6 {{if .TOC}}lg:grid-cols-[1fr_minmax(0,16rem)] lg:gap-10 xl:gap-12{{end}}">
+  <div class="grid gap-6 min-w-0">
+    {{if not .IsHome}}
+    <nav class="breadcrumbs text-sm" aria-label="Breadcrumb">
+      <ul>
+        <li><a href="/">Home</a></li>
+        <li>{{.Page.Title}}</li>
+      </ul>
+    </nav>
+    {{end}}
+    {{if or .Page.Tags (not .Page.UpdatedAt.IsZero)}}
+    <div class="flex flex-wrap items-center gap-2 text-xs text-base-content/60">
+      {{range .Page.Tags}}<span class="badge badge-outline">{{.}}</span>{{end}}
+      {{if not .Page.UpdatedAt.IsZero}}
+      <span class="ml-auto">Updated {{timeAgo .Page.UpdatedAt}}</span>
+      {{end}}
+    </div>
+    {{end}}
+    <article class="card bg-base-100 shadow-sm">
+      <div class="card-body">
+        <div class="prose max-w-none">{{.Content}}</div>
+      </div>
+    </article>
+  </div>
+  {{if .TOC}}
+  <aside class="hidden lg:block">
+    <div class="sticky top-20">
+      <p class="text-xs uppercase tracking-wide text-base-content/60 mb-2">On this page</p>
+      <ul class="menu menu-sm bg-base-100 rounded-box shadow-sm border border-base-300 w-full">
+        {{range .TOC}}
+        <li>
+          <a class="text-sm {{if eq .Level 3}}pl-6 text-base-content/70{{end}}" href="#{{.Anchor}}">{{.Text}}</a>
+        </li>
+        {{end}}
+      </ul>
+    </div>
+  </aside>
+  {{end}}
+</div>
+{{template "base-end" .}}{{end}}

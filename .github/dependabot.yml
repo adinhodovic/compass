@@ -1,0 +1,65 @@
+version: 2
+updates:
+  - package-ecosystem: gomod
+    directory: /
+    assignees:
+      - adinhodovic
+    schedule:
+      interval: monthly
+    cooldown:
+      default-days: 14
+    ignore:
+      - dependency-name: "*"
+        update-types:
+          - version-update:semver-patch
+    groups:
+      go-dependencies:
+        patterns:
+          - "*"
+
+  - package-ecosystem: npm
+    directory: /
+    assignees:
+      - adinhodovic
+    schedule:
+      interval: monthly
+    cooldown:
+      default-days: 14
+    ignore:
+      - dependency-name: "*"
+        update-types:
+          - version-update:semver-patch
+    groups:
+      npm-dependencies:
+        patterns:
+          - "*"
+
+  - package-ecosystem: github-actions
+    directory: /
+    assignees:
+      - adinhodovic
+    schedule:
+      interval: monthly
+    cooldown:
+      default-days: 14
+    ignore:
+      - dependency-name: "*"
+        update-types:
+          - version-update:semver-patch
+    groups:
+      github-actions:
+        patterns:
+          - "*"
+
+  - package-ecosystem: docker
+    directory: /
+    assignees:
+      - adinhodovic
+    schedule:
+      interval: monthly
+    cooldown:
+      default-days: 14
+    groups:
+      docker:
+        patterns:
+          - "*"

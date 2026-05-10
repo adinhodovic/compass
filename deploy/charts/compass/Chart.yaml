@@ -1,0 +1,24 @@
+apiVersion: v2
+name: compass
+description: Compass discovers services from Docker, Kubernetes, Tailscale, Headscale, and HTTP APIs and renders them on a single dashboard.
+type: application
+
+# Chart version. Bump on every chart change (templates, defaults, schema).
+# Follows SemVer.
+version: 0.1.0
+
+# Application version — should track Compass binary release this chart
+# was tested against.
+appVersion: "0.1.0"
+
+home: https://github.com/adinhodovic/compass
+sources:
+  - https://github.com/adinhodovic/compass
+maintainers:
+  - name: Adin Hodovic
+    url: https://github.com/adinhodovic
+keywords:
+  - compass
+  - service-catalog
+  - homelab
+  - dashboard

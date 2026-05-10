@@ -1,0 +1,17 @@
+{{- if and .Values.pages.enabled (not .Values.pages.existingConfigMap.name) -}}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "compass.pagesConfigMapName" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "compass.labels" . | nindent 4 }}
+data:
+  # ConfigMap keys can't contain `/`, so nested paths get encoded with
+  # `__`; the deployment volume's `items:` block maps them back to their
+  # real on-disk path.
+  {{- range $path, $body := .Values.pages.files }}
+  {{ regexReplaceAll "/" $path "__" | quote }}: |-
+    {{- $body | nindent 4 }}
+  {{- end }}
+{{- end }}

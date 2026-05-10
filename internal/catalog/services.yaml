@@ -1,0 +1,610 @@
+actual:
+  description: Self-hosted personal finance app with envelope budgeting and bank syncing.
+  icon: dashboardicons:actual-budget
+adguard-home:
+  description: Network-wide DNS filtering and ad blocking for home networks.
+  icon: dashboardicons:adguard-home
+alertmanager:
+  description: Alert routing, grouping, and notification dispatcher for Prometheus.
+  icon: dashboardicons:alertmanager
+alloy:
+  description: Telemetry collector for traces, logs, metrics, and profiles, distributed by Grafana.
+  icon: dashboardicons:alloy
+archivebox:
+  description: Self-hosted web archive for capturing and saving snapshots of pages.
+  icon: dashboardicons:archivebox
+argo-cd:
+  description: GitOps continuous delivery for Kubernetes applications.
+  icon: dashboardicons:argo-cd
+argo-workflows:
+  description: Kubernetes-native workflow engine for orchestrating parallel jobs and pipelines.
+  icon: dashboardicons:argo-cd
+atuin:
+  description: Encrypted shell history sync, search, and backup across machines.
+  icon: dashboardicons:atuin
+audiobookshelf:
+  description: Self-hosted audiobook and podcast server with mobile apps.
+  icon: dashboardicons:audiobookshelf
+authentik:
+  description: Identity provider for single sign-on, OAuth, SAML, and forward auth.
+  icon: dashboardicons:authentik
+backrest:
+  description: Web UI for managing Restic backup repositories and schedules.
+  icon: dashboardicons:backrest
+bazarr:
+  description: Subtitle management and automation for Sonarr and Radarr libraries.
+  icon: dashboardicons:bazarr
+bitwarden:
+  description: Password manager for storing credentials, secrets, and secure notes.
+  icon: dashboardicons:bitwarden
+bookstack:
+  description: Wiki-style documentation platform with chapters, books, and shelves.
+  icon: dashboardicons:bookstack
+caddy:
+  description: HTTP server and reverse proxy with automatic HTTPS.
+  icon: dashboardicons:caddy
+calibre:
+  description: E-book library management, conversion, and reading server.
+  icon: dashboardicons:calibre
+calibre-web:
+  description: Web interface for browsing, reading, and downloading Calibre libraries.
+  icon: dashboardicons:calibre-web
+ceph:
+  description: Distributed storage system providing block, object, and file storage.
+  icon: dashboardicons:ceph
+changedetection:
+  description: Self-hosted website change monitoring with notifications.
+  icon: dashboardicons:changedetection
+clickhouse:
+  description: Column-oriented database for fast analytical queries on large datasets.
+  icon: dashboardicons:clickhouse
+cloudflare:
+  description: DNS, tunnel, access, and edge security services from Cloudflare.
+  icon: dashboardicons:cloudflare
+cloudflared:
+  description: Cloudflare Tunnel connector for exposing private services securely.
+  icon: dashboardicons:cloudflare
+code-server:
+  description: VS Code running in the browser for remote development.
+comfyui:
+  description: Node-based UI for Stable Diffusion image generation workflows.
+  icon: dashboardicons:comfyui
+consul:
+  description: Service discovery, health checks, and key-value store from HashiCorp.
+  icon: dashboardicons:hashicorp-consul
+coredns:
+  description: Pluggable DNS server commonly used inside Kubernetes clusters.
+crowdsec:
+  description: Collaborative intrusion prevention with shared community blocklists.
+  icon: dashboardicons:crowdsec
+dashy:
+  description: Customizable self-hosted dashboard for services, links, and status widgets.
+deluge:
+  description: BitTorrent client with a web interface and daemon mode.
+  icon: dashboardicons:deluge
+dex:
+  description: OpenID Connect identity broker that federates upstream providers.
+docker:
+  description: Container runtime and engine for packaging and running applications.
+  icon: dashboardicons:docker
+docker-registry:
+  description: Distribution server for storing and serving Docker images.
+  icon: dashboardicons:docker
+dozzle:
+  description: Lightweight web UI for browsing Docker container logs.
+  icon: dashboardicons:dozzle
+drawio:
+  description: Self-hosted diagram editor for flowcharts and architecture diagrams.
+  icon: dashboardicons:draw-io
+drone:
+  description: Container-native continuous integration platform driven by pipelines.
+  icon: selfhst:drone-ci
+duplicati:
+  description: Backup client with encryption, deduplication, and cloud destinations.
+  icon: dashboardicons:duplicati
+elasticsearch:
+  description: Search and analytics engine for logs, full-text search, and observability.
+  icon: dashboardicons:elasticsearch
+emqx:
+  description: MQTT broker for IoT, home automation, and event messaging.
+  icon: dashboardicons:emqx
+esphome:
+  description: Firmware builder and dashboard for ESP-based smart home devices.
+  icon: dashboardicons:esphome
+etcd:
+  description: Distributed key-value store and the backing store for Kubernetes.
+excalidraw:
+  description: Hand-drawn-style virtual whiteboard for diagrams and sketches.
+  icon: dashboardicons:excalidraw
+filebrowser:
+  description: Web file manager for browsing, uploading, and sharing files.
+  icon: dashboardicons:filebrowser
+firefly-iii:
+  description: Self-hosted personal finance manager for budgets, accounts, and transactions.
+  icon: dashboardicons:firefly-iii
+flower:
+  description: Real-time web monitoring and admin tool for Celery distributed task queues.
+fluent-bit:
+  description: Lightweight log forwarder and processor for shipping logs to backends.
+focalboard:
+  description: Self-hosted project management with kanban boards, tasks, and notes.
+  icon: dashboardicons:focalboard
+forgejo:
+  description: Lightweight self-hosted Git service forked from Gitea.
+  icon: dashboardicons:forgejo
+freshrss:
+  description: Self-hosted RSS aggregator with filters, mobile sync, and a clean UI.
+  icon: dashboardicons:freshrss
+frigate:
+  description: Network video recorder with real-time AI object detection for IP cameras.
+  icon: dashboardicons:frigate
+gatus:
+  description: Status page and health-check monitoring with rich notification options.
+  icon: dashboardicons:gatus
+ghost:
+  description: Self-hosted publishing platform for blogs, newsletters, and memberships.
+gitea:
+  description: Self-hosted Git service with repositories, issues, pull requests, and CI integrations.
+  icon: dashboardicons:gitea
+gitlab:
+  description: Git platform with repositories, CI/CD, registry, and project management.
+  icon: dashboardicons:gitlab
+glance:
+  description: Lightweight customizable feeds dashboard for self-hosted setups.
+  icon: dashboardicons:glance
+glances:
+  description: System monitoring dashboard for CPU, memory, disks, network, and processes.
+  icon: dashboardicons:glances
+gluetun:
+  description: VPN client container with kill switch for routing other containers.
+  icon: dashboardicons:gluetun
+gotify:
+  description: Self-hosted push notification server with mobile and CLI clients.
+  icon: dashboardicons:gotify
+grafana:
+  description: Observability dashboards for exploring metrics, logs, traces, alerts, and service health.
+  icon: dashboardicons:grafana
+graylog:
+  description: Centralized log management, search, dashboards, and alerting.
+  icon: dashboardicons:graylog
+guacamole:
+  description: Clientless remote desktop gateway for SSH, RDP, and VNC sessions.
+  icon: dashboardicons:apache-guacamole
+haproxy:
+  description: High-performance load balancer and reverse proxy.
+  icon: dashboardicons:haproxy
+harbor:
+  description: Container registry with image signing, scanning, and replication.
+  icon: dashboardicons:harbor
+headscale:
+  description: Self-hosted Tailscale coordination server for private mesh networks.
+  icon: dashboardicons:headscale
+hedgedoc:
+  description: Real-time collaborative markdown editor and notes platform.
+  icon: dashboardicons:hedgedoc
+heimdall:
+  description: Application dashboard for organizing self-hosted service links.
+  icon: dashboardicons:heimdall
+hoarder:
+  description: Self-hosted bookmark and note manager with AI tagging (now Karakeep).
+  icon: dashboardicons:hoarder
+homarr:
+  description: Modern customizable dashboard for self-hosted services and apps.
+  icon: dashboardicons:homarr
+home-assistant:
+  description: Home automation platform for controlling and automating smart devices.
+  icon: dashboardicons:home-assistant
+homepage:
+  description: Application dashboard for organizing links, services, and status widgets.
+  icon: selfhst:homepage
+homer:
+  description: Static dashboard generated from a YAML config for quick service launchers.
+  icon: dashboardicons:homer
+immich:
+  description: Self-hosted photo and video backup with mobile apps and machine learning features.
+  icon: dashboardicons:immich
+influxdb:
+  description: Time-series database commonly used for metrics and sensor data.
+  icon: dashboardicons:influxdb
+it-tools:
+  description: Collection of handy in-browser tools and converters for developers.
+  icon: dashboardicons:it-tools
+jackett:
+  description: Indexer proxy for torrent trackers used by media automation tools.
+  icon: dashboardicons:jackett
+jaeger:
+  description: Distributed tracing system for visualizing request flows across services.
+jellyfin:
+  description: Self-hosted media server for streaming movies, shows, music, and live TV.
+  icon: dashboardicons:jellyfin
+jellyseerr:
+  description: Media request management for Jellyfin and the *arr automation stack.
+  icon: dashboardicons:jellyseerr
+jenkins:
+  description: Open-source automation server for continuous integration and delivery.
+  icon: dashboardicons:jenkins
+joplin:
+  description: Self-hosted notes and to-do server with cross-device synchronization.
+  icon: dashboardicons:joplin
+k3s:
+  description: Lightweight Kubernetes distribution built for edge, lab, and small cluster environments.
+  icon: dashboardicons:k3s
+kafka:
+  description: Distributed event streaming platform for high-throughput messaging pipelines.
+  icon: dashboardicons:kafka
+karakeep:
+  description: Self-hosted bookmark manager with AI-powered tagging and full-page archiving.
+  icon: dashboardicons:karakeep
+kestra:
+  description: Workflow orchestration platform for declarative data and infrastructure pipelines.
+  icon: dashboardicons:kestra
+keycloak:
+  description: Identity and access management with SSO, federation, and user directories.
+  icon: dashboardicons:keycloak
+kibana:
+  description: Search and visualization interface for Elasticsearch data.
+  icon: dashboardicons:kibana
+kopia:
+  description: Encrypted, deduplicated backup tool with many storage backends.
+  icon: dashboardicons:kopia
+kubernetes:
+  description: Container orchestration platform for deploying and managing workloads.
+  icon: dashboardicons:kubernetes
+librenms:
+  description: SNMP-based network monitoring with auto-discovery and alerting.
+  icon: dashboardicons:librenms
+lidarr:
+  description: Music collection manager and download automation tool.
+  icon: dashboardicons:lidarr
+linkding:
+  description: Self-hosted bookmark manager with tagging and archive support.
+  icon: dashboardicons:linkding
+linkwarden:
+  description: Self-hosted bookmark manager with collections, tags, and full-page archiving.
+  icon: selfhst:linkwarden
+localai:
+  description: Drop-in OpenAI-compatible API server for running models locally.
+loki:
+  description: Log aggregation system designed to work closely with Grafana.
+  icon: dashboardicons:loki
+longhorn:
+  description: Distributed block storage for Kubernetes with snapshots and backups.
+  icon: dashboardicons:longhorn
+mailcow:
+  description: Dockerized full-featured email server stack with web UI and SOGo.
+  icon: dashboardicons:mailcow
+mailu:
+  description: Modular self-hosted mail server with web admin and antispam.
+mariadb:
+  description: Relational database forked from MySQL for application data and services.
+  icon: dashboardicons:mariadb
+mastodon:
+  description: Federated social network compatible with the ActivityPub protocol.
+  icon: dashboardicons:mastodon
+matomo:
+  description: Self-hosted privacy-respecting web analytics platform.
+  icon: dashboardicons:matomo
+matrix-synapse:
+  description: Reference homeserver for the Matrix decentralized communication protocol.
+  icon: dashboardicons:matrix
+mealie:
+  description: Recipe manager and meal planner for households and self-hosted kitchens.
+  icon: dashboardicons:mealie
+meilisearch:
+  description: Open-source typo-tolerant search engine with fast indexing.
+  icon: dashboardicons:meilisearch
+memos:
+  description: Self-hosted notes app focused on quick text capture and tagging.
+  icon: dashboardicons:memos
+metabase:
+  description: Open source business intelligence and data exploration with no-code dashboards.
+  icon: dashboardicons:metabase
+microk8s:
+  description: Single-node Kubernetes distribution from Canonical for development and edge.
+mimir:
+  description: Horizontally scalable Prometheus-compatible long-term metrics store.
+  icon: selfhst:grafana-mimir
+miniflux:
+  description: Lightweight self-hosted RSS feed reader.
+  icon: dashboardicons:miniflux
+minio:
+  description: S3-compatible object storage for backups, artifacts, and application data.
+  icon: dashboardicons:minio
+mongodb:
+  description: Document-oriented NoSQL database for application data.
+  icon: dashboardicons:mongodb
+monica:
+  description: Self-hosted personal CRM for tracking relationships, notes, and reminders.
+  icon: dashboardicons:monica
+mosquitto:
+  description: Lightweight MQTT broker commonly used for home automation messaging.
+  icon: dashboardicons:mosquitto
+mysql:
+  description: Relational database for application data and services.
+  icon: dashboardicons:mysql
+n8n:
+  description: Workflow automation platform with hundreds of integrations and node-based logic.
+  icon: dashboardicons:n8n
+nats:
+  description: High-performance messaging system for cloud-native and edge services.
+navidrome:
+  description: Subsonic-compatible self-hosted music server with a modern web UI.
+  icon: dashboardicons:navidrome
+netbird:
+  description: Self-hosted WireGuard-based mesh VPN with web management.
+  icon: dashboardicons:netbird
+netbox:
+  description: Source-of-truth IPAM and DCIM platform for network infrastructure.
+  icon: dashboardicons:netbox
+netdata:
+  description: Real-time infrastructure monitoring with detailed system and application metrics.
+  icon: dashboardicons:netdata
+nextcloud:
+  description: Self-hosted file sync, sharing, calendar, contacts, and collaboration platform.
+  icon: dashboardicons:nextcloud
+nginx:
+  description: High-performance HTTP server, reverse proxy, and load balancer.
+  icon: dashboardicons:nginx
+nginx-proxy-manager:
+  description: Reverse proxy manager for hosts, SSL certificates, and access lists.
+  icon: dashboardicons:nginx-proxy-manager
+nocodb:
+  description: Open-source Airtable alternative for turning databases into spreadsheets.
+  icon: dashboardicons:nocodb
+node-exporter:
+  description: Prometheus exporter for Linux host metrics.
+node-red:
+  description: Flow-based automation tool for wiring APIs, devices, and home automation events.
+  icon: dashboardicons:node-red
+ntfy:
+  description: Simple publish-subscribe notification service with web and mobile clients.
+  icon: dashboardicons:ntfy
+nzbget:
+  description: Lightweight Usenet downloader with web UI and media-manager integration.
+  icon: dashboardicons:nzbget
+octoprint:
+  description: Web interface for managing and monitoring 3D printers.
+  icon: dashboardicons:octoprint
+ollama:
+  description: Local LLM runner with a simple CLI for pulling and serving open models.
+  icon: dashboardicons:ollama
+ombi:
+  description: Media request management for Plex, Emby, and Jellyfin environments.
+  icon: dashboardicons:ombi
+onlyoffice:
+  description: Self-hosted online office suite for documents, spreadsheets, and presentations.
+  icon: dashboardicons:onlyoffice
+opencost:
+  description: Real-time Kubernetes cost monitoring and allocation by namespace, label, or workload.
+  icon: dashboardicons:opencost
+openldap:
+  description: Open-source LDAP directory server for centralized authentication.
+  icon: dashboardicons:openldap
+opensearch:
+  description: Open-source fork of Elasticsearch for search and analytics workloads.
+  icon: dashboardicons:opensearch
+openvpn:
+  description: VPN protocol and server for secure remote access.
+  icon: dashboardicons:openvpn
+openwebui:
+  description: Self-hosted web UI for chatting with local LLMs such as Ollama.
+  icon: dashboardicons:open-webui
+opnsense:
+  description: Firewall and routing platform with VPN, DNS, DHCP, and network services.
+  icon: dashboardicons:opnsense
+outline:
+  description: Self-hosted team knowledge base and wiki with a markdown editor.
+  icon: dashboardicons:outline
+overseerr:
+  description: Media request management for Plex and the *arr automation stack.
+  icon: dashboardicons:overseerr
+owncloud:
+  description: Self-hosted file sync, sharing, and collaboration platform.
+  icon: dashboardicons:owncloud
+paperless-ngx:
+  description: Document management system for scanning, OCR, tagging, and archiving paperwork.
+  icon: dashboardicons:paperless-ngx
+pgadmin:
+  description: Web-based administration tool for PostgreSQL databases.
+  icon: dashboardicons:pgadmin
+pghero:
+  description: Performance dashboard for PostgreSQL with slow-query and index suggestions.
+  icon: dashboardicons:postgres
+photoprism:
+  description: AI-powered photo app for browsing, organizing, and sharing your library.
+  icon: dashboardicons:photoprism
+pi-hole:
+  description: Network-wide DNS sinkhole for ad blocking and local DNS management.
+  icon: dashboardicons:pi-hole
+planka:
+  description: Self-hosted Trello-style kanban project management.
+  icon: dashboardicons:planka
+plausible:
+  description: Privacy-friendly web analytics platform without cookies.
+  icon: dashboardicons:plausible
+plex:
+  description: Media server for organizing and streaming movies, shows, music, and photos.
+  icon: dashboardicons:plex
+podman:
+  description: Daemonless container engine for running OCI-compatible containers.
+  icon: dashboardicons:podman
+portainer:
+  description: Web UI for managing Docker, Compose, Swarm, and Kubernetes environments.
+  icon: dashboardicons:portainer
+postgres:
+  description: Relational database for application data, analytics, and backend services.
+  icon: dashboardicons:postgresql
+prometheus:
+  description: Metrics database and PromQL query engine for scraping targets, recording time series, and powering alerts.
+  icon: dashboardicons:prometheus
+prowlarr:
+  description: Indexer manager and proxy for Sonarr, Radarr, Lidarr, and Readarr.
+  icon: dashboardicons:prowlarr
+proxmox:
+  description: Open-source virtualization platform combining KVM and LXC.
+  icon: dashboardicons:proxmox
+pushgateway:
+  description: Prometheus push gateway for collecting metrics from short-lived jobs.
+pyroscope:
+  description: Continuous profiling backend for tracking CPU and memory usage over time.
+pyrra:
+  description: SLO and error-budget management on top of Prometheus.
+qbittorrent:
+  description: BitTorrent client with a web UI and automation-friendly API.
+  icon: dashboardicons:qbittorrent
+rabbitmq:
+  description: General-purpose message broker supporting AMQP, MQTT, and STOMP.
+  icon: dashboardicons:rabbitmq
+radarr:
+  description: Movie collection manager and download automation tool.
+  icon: dashboardicons:radarr
+rancher:
+  description: Multi-cluster Kubernetes management platform.
+  icon: dashboardicons:rancher
+readarr:
+  description: Book and audiobook collection manager and download automation tool.
+  icon: dashboardicons:readarr
+redis:
+  description: In-memory data store commonly used for caching, queues, and sessions.
+  icon: dashboardicons:redis
+restic:
+  description: Encrypted, deduplicated backup tool with many storage backends.
+sabnzbd:
+  description: Usenet downloader with automation integrations for media workflows.
+  icon: dashboardicons:sabnzbd
+scrutiny:
+  description: Hard drive health dashboard using S.M.A.R.T. metrics and historical trends.
+  icon: dashboardicons:scrutiny
+searxng:
+  description: Privacy-respecting metasearch engine aggregating many search providers.
+  icon: dashboardicons:searxng
+semaphoreui:
+  description: Modern web UI for Ansible playbooks, Terraform, and CI workflows.
+  icon: dashboardicons:semaphore
+sentry:
+  description: Application performance monitoring and error tracking.
+  icon: dashboardicons:sentry
+silverbullet:
+  description: Markdown-based note-taking platform with extensible plugins.
+snipe-it:
+  description: Asset management for tracking IT inventory and licenses.
+sonarr:
+  description: TV series collection manager and download automation tool.
+  icon: dashboardicons:sonarr
+speedtest-tracker:
+  description: Self-hosted internet speed monitoring with historical reporting.
+  icon: selfhst:speedtest
+supabase:
+  description: Open-source backend-as-a-service with Postgres, auth, and storage.
+  icon: dashboardicons:supabase
+syncthing:
+  description: Peer-to-peer file synchronization across devices.
+  icon: dashboardicons:syncthing
+tailscale:
+  description: WireGuard-based private mesh network for connecting devices and services.
+  icon: dashboardicons:tailscale
+tandoor:
+  description: Recipe manager and meal planning platform for households.
+  icon: dashboardicons:tandoor-recipes
+tautulli:
+  description: Plex monitoring and analytics for streams, users, history, and notifications.
+  icon: dashboardicons:tautulli
+tdarr:
+  description: Distributed transcoding pipeline for normalizing media libraries.
+teleport:
+  description: Identity-aware access proxy for SSH, Kubernetes, databases, and web apps.
+  icon: dashboardicons:teleport
+temporal:
+  description: Workflow orchestration engine for durable application logic.
+tempo:
+  description: Distributed tracing backend integrated with Grafana.
+thanos:
+  description: Long-term storage and global query for Prometheus metrics.
+  icon: dashboardicons:thanos
+thanos-compact:
+  description: Thanos compactor that downsamples and compacts blocks in long-term object storage.
+  icon: dashboardicons:thanos
+thanos-query:
+  description: Thanos query layer that aggregates metrics across stores and Prometheus instances.
+  icon: dashboardicons:thanos
+thanos-store:
+  description: Thanos store gateway exposing metrics from object-storage-backed blocks.
+  icon: dashboardicons:thanos
+traccar:
+  description: Self-hosted GPS tracking server for fleets and personal use.
+  icon: dashboardicons:traccar
+traefik:
+  description: Cloud-native reverse proxy and ingress controller with automatic service discovery.
+  icon: dashboardicons:traefik
+transmission:
+  description: Lightweight BitTorrent client with daemon and web interface.
+  icon: dashboardicons:transmission
+trilium:
+  description: Hierarchical note-taking app with rich text and code support.
+  icon: dashboardicons:trilium
+truenas:
+  description: Storage platform for NAS, ZFS pools, shares, snapshots, and backups.
+  icon: dashboardicons:truenas-scale
+twingate:
+  description: Zero-trust remote access network as an alternative to traditional VPNs.
+  icon: dashboardicons:twingate
+typesense:
+  description: Fast typo-tolerant search engine with simple deployment.
+  icon: dashboardicons:typesense
+umami:
+  description: Privacy-focused web analytics for tracking site traffic and events.
+  icon: dashboardicons:umami
+unifi:
+  description: Network controller for UniFi gateways, switches, access points, and clients.
+  icon: dashboardicons:ubiquiti-unifi
+uptime-kuma:
+  description: Self-hosted uptime monitoring with status pages and notifications.
+  icon: dashboardicons:uptime-kuma
+vault:
+  description: Secrets management, encryption, and identity-based access to sensitive data.
+  icon: dashboardicons:hashicorp-vault
+vaultwarden:
+  description: Lightweight self-hosted Bitwarden-compatible password manager server.
+  icon: dashboardicons:vaultwarden
+vector:
+  description: High-performance log and metric pipeline for collection and routing.
+  icon: dashboardicons:vector
+velero:
+  description: Backup and restore for Kubernetes clusters and persistent volumes.
+  icon: dashboardicons:velero
+victoria-metrics:
+  description: High-performance time-series database and Prometheus-compatible metrics backend.
+  icon: dashboardicons:victoriametrics
+vikunja:
+  description: Self-hosted to-do and project management with mobile apps.
+  icon: dashboardicons:vikunja
+wallabag:
+  description: Self-hosted read-it-later service for saving and reading articles.
+  icon: dashboardicons:wallabag
+watchtower:
+  description: Automatic Docker image updater for keeping containers current.
+  icon: dashboardicons:watchtower
+wireguard:
+  description: Fast VPN protocol and tooling for encrypted private networking.
+  icon: dashboardicons:wireguard
+woodpecker:
+  description: Container-native CI engine forked from Drone.
+  icon: dashboardicons:woodpecker-ci
+wordpress:
+  description: Open-source content management system for blogs and websites.
+  icon: dashboardicons:wordpress
+yacht:
+  description: Web UI for managing Docker containers with reusable templates.
+  icon: dashboardicons:yacht
+zabbix:
+  description: Enterprise-grade monitoring system for infrastructure and applications.
+  icon: dashboardicons:zabbix
+zerotier:
+  description: Smart Ethernet network for connecting devices over the internet.
+  icon: dashboardicons:zerotier
+zigbee2mqtt:
+  description: Bridge for connecting Zigbee devices to MQTT-based home automation systems.
+  icon: dashboardicons:zigbee2mqtt
+zwave-js-ui:
+  description: Z-Wave control panel and MQTT/WebSocket gateway for home automation.
+  icon: dashboardicons:z-wave-js-ui

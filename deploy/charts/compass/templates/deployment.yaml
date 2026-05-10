@@ -1,0 +1,134 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "compass.fullname" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "compass.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "compass.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      annotations:
+        # Roll the deployment when inline content changes — the underlying
+        # ConfigMap mount updates automatically, but for compass.yaml we
+        # use subPath which doesn't, and for pages/catalog this still
+        # speeds the roll up to the next reconcile.
+        {{- if not .Values.existingConfigMap.name }}
+        checksum/config: {{ .Values.config | sha256sum }}
+        {{- end }}
+        {{- if and .Values.pages.enabled (not .Values.pages.existingConfigMap.name) }}
+        checksum/pages: {{ .Values.pages.files | toYaml | sha256sum }}
+        {{- end }}
+        {{- if and .Values.catalog.enabled (not .Values.catalog.existingConfigMap.name) }}
+        checksum/catalog: {{ .Values.catalog.files | toYaml | sha256sum }}
+        {{- end }}
+        {{- with .Values.podAnnotations }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+      labels:
+        {{- include "compass.labels" . | nindent 8 }}
+        {{- with .Values.podLabels }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "compass.serviceAccountName" . }}
+      {{- with .Values.podSecurityContext }}
+      securityContext:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: {{ .Chart.Name }}
+          {{- with .Values.securityContext }}
+          securityContext:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          args:
+            - "-c"
+            - "/etc/compass/compass.yaml"
+            {{- with .Values.extraArgs }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+          {{- with .Values.env }}
+          env:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.service.port }}
+              protocol: TCP
+          {{- with .Values.livenessProbe }}
+          livenessProbe:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with .Values.readinessProbe }}
+          readinessProbe:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with .Values.resources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          volumeMounts:
+            - name: config
+              mountPath: /etc/compass/compass.yaml
+              subPath: compass.yaml
+              readOnly: true
+            {{- if include "compass.pagesMountActive" . }}
+            - name: pages
+              mountPath: {{ .Values.pages.mountPath | quote }}
+              readOnly: true
+            {{- end }}
+            {{- if include "compass.catalogMountActive" . }}
+            - name: catalog
+              mountPath: {{ .Values.catalog.mountPath | quote }}
+              readOnly: true
+            {{- end }}
+            {{- with .Values.volumeMounts }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+      volumes:
+        - name: config
+          configMap:
+            name: {{ include "compass.configMapName" . }}
+        {{- if include "compass.pagesMountActive" . }}
+        - name: pages
+          configMap:
+            name: {{ include "compass.pagesConfigMapName" . }}
+            {{- if and .Values.pages.enabled (not .Values.pages.existingConfigMap.name) }}
+            items:
+              {{- range $path, $body := .Values.pages.files }}
+              - key: {{ regexReplaceAll "/" $path "__" | quote }}
+                path: {{ $path | quote }}
+              {{- end }}
+            {{- end }}
+        {{- end }}
+        {{- if include "compass.catalogMountActive" . }}
+        - name: catalog
+          configMap:
+            name: {{ include "compass.catalogConfigMapName" . }}
+        {{- end }}
+        {{- with .Values.volumes }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}

@@ -1,0 +1,13 @@
+# Overrides for built-in catalog entries. The merge is per-field, so anything
+# omitted here keeps the embedded value (e.g. grafana's icon stays as
+# simple-icons:grafana even though we only override its tags).
+
+grafana:
+  tags: [observability, dashboards, dev]
+
+prometheus:
+  description: Metrics, PromQL, and alerting for everything in the cluster.
+  tags: [observability, metrics]
+
+pi-hole:
+  tags: [network, dns, dev]

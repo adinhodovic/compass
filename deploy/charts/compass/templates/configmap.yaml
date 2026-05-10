@@ -1,0 +1,12 @@
+{{- if not .Values.existingConfigMap.name -}}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "compass.configMapName" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "compass.labels" . | nindent 4 }}
+data:
+  compass.yaml: |-
+    {{- .Values.config | nindent 4 }}
+{{- end }}

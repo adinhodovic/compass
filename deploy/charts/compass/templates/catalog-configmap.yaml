@@ -1,0 +1,16 @@
+{{- if and .Values.catalog.enabled (not .Values.catalog.existingConfigMap.name) -}}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "compass.catalogConfigMapName" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "compass.labels" . | nindent 4 }}
+data:
+  # Catalog overrides live as flat *.yaml / *.yml files; no nested
+  # paths, so keys map 1:1 onto filenames.
+  {{- range $path, $body := .Values.catalog.files }}
+  {{ $path | quote }}: |-
+    {{- $body | nindent 4 }}
+  {{- end }}
+{{- end }}

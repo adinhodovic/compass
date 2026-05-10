@@ -1,0 +1,17 @@
+# A Gateway with no controller. The HTTPRoutes below reference it via
+# parentRefs so the relationship is realistic, but nothing reconciles
+# the Gateway — no ingress traffic actually flows. Compass only reads
+# the API objects, so this is enough to exercise the discovery path.
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  name: dev-gateway
+spec:
+  gatewayClassName: dev
+  listeners:
+    - name: http
+      protocol: HTTP
+      port: 80
+      allowedRoutes:
+        namespaces:
+          from: All

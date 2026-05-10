@@ -1,0 +1,334 @@
+{{define "home"}}{{template "base-start" .}}
+<script type="application/json" id="services-data">{{json .Services}}</script>
+<div x-data="compassHome()" x-init="init()" x-on:keydown.window.slash="focusSearch($event)" x-on:focus-search.window="focusSearch($event)" class="grid gap-5 sm:gap-6">
+  <section>
+    <h1 class="text-2xl font-semibold sm:text-3xl">Services</h1>
+    {{if .Organization.Description}}
+    <p class="text-sm text-base-content/70 mt-1 max-w-3xl">{{.Organization.Description}}</p>
+    {{end}}
+    {{$groupNoun := .GroupBy}}{{if eq $groupNoun "tags"}}{{$groupNoun = "tag"}}{{end}}
+    <p class="text-xs text-base-content/60 mt-2">
+      {{len .Services}} service{{if ne (len .Services) 1}}s{{end}} across {{len .GroupNames}} {{$groupNoun}}{{if ne (len .GroupNames) 1}}s{{end}}.
+    </p>
+  </section>
+
+  <section class="card bg-base-100 shadow-sm border border-base-300">
+    <div class="card-body p-3 sm:p-4 grid gap-4 md:grid-cols-2 md:divide-x md:divide-base-300">
+      <div class="md:pr-4">
+        <div class="flex items-center justify-between gap-2 mb-3">
+          <div class="flex items-center gap-2 text-warning">
+            {{icon "solar:star-bold"}}
+            <p class="text-xs uppercase tracking-wide text-base-content/70">Pinned</p>
+            <span class="badge badge-ghost badge-sm" x-text="favoriteServices().length"></span>
+          </div>
+        </div>
+        <div class="flex flex-wrap gap-2">
+          <template x-for="service in favoriteServices().slice(0, 6)" :key="service.id">
+            <a class="group flex max-w-full items-center gap-2 rounded-lg bg-base-200 px-2 py-1.5 text-sm transition-colors hover:bg-base-300"
+               :href="'/services/' + service.id"
+               x-on:click="trackRecent(service.id)">
+              <template x-if="service.iconURL">
+                <span class="avatar"><span class="w-5 rounded"><img :src="service.iconURL" :alt="service.name + ' logo'" loading="lazy"></span></span>
+              </template>
+              <template x-if="!service.iconURL">
+                <span class="avatar avatar-placeholder"><span class="bg-neutral text-neutral-content w-5 rounded text-[10px]" x-text="service.iconText || service.name.charAt(0)"></span></span>
+              </template>
+              <span class="min-w-0 leading-tight">
+                <span class="block truncate" x-text="service.name"></span>
+                <span class="block truncate text-[11px] text-base-content/60" x-show="duplicateServiceName(service)" x-text="service.sourceLabel"></span>
+              </span>
+              <button type="button"
+                      class="opacity-0 group-hover:opacity-100 transition-opacity text-base-content/50 hover:text-error"
+                      x-on:click.prevent.stop="toggleFavorite(service.id)"
+                      aria-label="Unpin">{{icon "lucide:x"}}</button>
+            </a>
+          </template>
+          <span class="badge badge-ghost badge-sm" x-show="favoriteServices().length > 6" x-text="'+' + (favoriteServices().length - 6) + ' more'"></span>
+          <p class="text-sm italic text-base-content/50" x-show="favoriteServices().length === 0">No pinned services.</p>
+        </div>
+      </div>
+      <div class="md:pl-4">
+        <div class="flex items-center justify-between gap-2 mb-3">
+          <div class="flex items-center gap-2 text-base-content/70">
+            {{icon "lucide:history"}}
+            <p class="text-xs uppercase tracking-wide text-base-content/70">Recent</p>
+            <span class="badge badge-ghost badge-sm" x-text="recentServices().length"></span>
+          </div>
+          <button class="btn btn-ghost btn-xs" type="button" x-on:click="clearRecents()">Clear</button>
+        </div>
+        <div class="flex flex-wrap gap-2">
+          <template x-for="service in recentServices().slice(0, 6)" :key="service.id">
+            <a class="flex max-w-full items-center gap-2 rounded-lg px-2 py-1.5 text-sm text-base-content/80 transition-colors hover:bg-base-200"
+               :href="'/services/' + service.id">
+              <template x-if="service.iconURL">
+                <span class="avatar"><span class="w-5 rounded"><img :src="service.iconURL" :alt="service.name + ' logo'" loading="lazy"></span></span>
+              </template>
+              <template x-if="!service.iconURL">
+                <span class="avatar avatar-placeholder"><span class="bg-neutral text-neutral-content w-5 rounded text-[10px]" x-text="service.iconText || service.name.charAt(0)"></span></span>
+              </template>
+              <span class="min-w-0 leading-tight">
+                <span class="block truncate" x-text="service.name"></span>
+                <span class="block truncate text-[11px] text-base-content/60" x-show="duplicateServiceName(service)" x-text="service.sourceLabel"></span>
+              </span>
+            </a>
+          </template>
+          <span class="badge badge-ghost badge-sm" x-show="recentServices().length > 6" x-text="'+' + (recentServices().length - 6) + ' more'"></span>
+          <p class="text-sm italic text-base-content/50" x-show="recentServices().length === 0">No recent services.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="card bg-base-100 shadow-sm">
+    <div class="card-body p-4 sm:p-6">
+      <div class="flex items-start justify-between gap-2">
+        <div>
+          <h2 class="card-title">Filters</h2>
+          <p class="text-xs text-base-content/60">
+            <span x-show="q || tags.length || sources.length" x-text="visibleCount() + ' of '"></span>{{len .Services}} service{{if ne (len .Services) 1}}s{{end}}
+          </p>
+        </div>
+        <button class="btn btn-ghost btn-sm shrink-0" type="button" x-on:click="resetFilters()" x-show="q || tags.length || sources.length">{{icon "lucide:x"}}Clear all</button>
+      </div>
+      <label class="input w-full mt-4" for="service-search">
+        <span class="sr-only">Search services</span>
+        {{icon "lucide:search"}}
+        <input id="service-search" x-ref="serviceSearch" type="search" class="grow" placeholder="Search services" aria-label="Search services" x-model.debounce.150ms="q" autocomplete="off">
+        <kbd class="kbd kbd-sm">/</kbd>
+      </label>
+      <div class="grid gap-4 md:grid-cols-[1fr_minmax(0,28rem)]">
+        <fieldset class="fieldset">
+          <legend class="fieldset-legend">Tags <span class="badge badge-ghost badge-sm" x-show="tags.length" x-text="tags.length + ' selected'"></span></legend>
+          <div class="dropdown w-full" x-show="usesTagSearchPicker()" x-bind:class="tagPickerOpen ? 'dropdown-open' : 'dropdown-close'" x-on:click.outside="tagPickerOpen = false">
+            <button class="btn btn-sm w-full justify-between" type="button" x-on:click="toggleTagPicker()" x-bind:aria-expanded="tagPickerOpen">
+              <span class="flex min-w-0 items-center gap-2">
+                {{icon "lucide:tags"}}
+                <span class="truncate" x-text="tagPickerLabel()"></span>
+              </span>
+              <span class="flex items-center gap-2">
+                <span class="badge badge-primary badge-sm" x-show="tags.length" x-text="tags.length"></span>
+                {{icon "lucide:chevron-down"}}
+              </span>
+            </button>
+            <div class="dropdown-content z-50 mt-2 w-full rounded-box border border-base-300 bg-base-100 p-3 shadow-md sm:w-96" x-on:click.stop>
+              <label class="input input-sm w-full">
+                {{icon "lucide:search"}}
+                <input x-ref="tagSearch" type="search" class="grow" placeholder="Search tags" x-model.debounce.100ms="tagQuery" autocomplete="off">
+                <button class="btn btn-ghost btn-xs" type="button" x-show="tagQuery" x-on:click="tagQuery = ''" aria-label="Clear tag search">{{icon "lucide:x"}}</button>
+              </label>
+              <div class="mt-3 flex flex-wrap gap-1.5" x-show="tags.length">
+                <template x-for="tag in tags" :key="tag">
+                  <button class="badge badge-primary badge-sm gap-1 cursor-pointer" type="button" x-on:click="removeTag(tag)" x-bind:aria-label="'Remove tag filter ' + tag">
+                    <span x-text="tag"></span>{{icon "lucide:x"}}
+                  </button>
+                </template>
+                <button class="badge badge-ghost badge-sm cursor-pointer" type="button" x-on:click="tags = []">Clear tags</button>
+              </div>
+              <div class="mt-3 flex items-center justify-between gap-4 text-xs text-base-content/60">
+                <span x-text="tagPickerResultLabel()"></span>
+                <span x-show="!tagQuery" x-text="'Showing ' + visibleTagOptions().length"></span>
+              </div>
+              <div class="menu menu-sm mt-2 max-h-56 w-full flex-nowrap overflow-x-hidden overflow-y-auto rounded-box bg-base-100 p-0">
+                <template x-for="item in visibleTagOptions()" :key="item">
+                  <button type="button"
+                          class="flex w-full min-w-0 items-center justify-between gap-3 rounded-lg px-2 py-1.5 text-left hover:bg-base-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary"
+                          x-bind:aria-pressed="hasTag(item)"
+                          x-on:click="toggleTag(item)">
+                    <span class="min-w-0 flex-1 truncate" x-text="item"></span>
+                    <span class="flex shrink-0 items-center gap-2">
+                      <span class="text-xs text-base-content/50" x-text="tagCount(item)"></span>
+                      <span class="badge badge-sm" x-bind:class="hasTag(item) ? 'badge-primary' : 'badge-ghost'" x-text="hasTag(item) ? 'Selected' : 'Add'"></span>
+                    </span>
+                  </button>
+                </template>
+                <p x-show="availableTags().length && !visibleTagOptions().length" class="text-sm text-base-content/60">No matching tags.</p>
+              </div>
+            </div>
+          </div>
+          <div class="flex flex-wrap gap-1.5" x-show="!usesTagSearchPicker()">
+            <template x-for="item in availableTags()" :key="item">
+              <button type="button"
+                       class="badge badge-sm max-w-full cursor-pointer truncate transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary"
+                      x-bind:class="hasTag(item) ? 'badge-primary' : 'badge-outline'"
+                      x-bind:aria-pressed="hasTag(item)"
+                      x-on:click="toggleTag(item)"
+                      x-text="item"></button>
+            </template>
+            <p x-show="!availableTags().length" class="text-sm text-base-content/60">No tags discovered.</p>
+          </div>
+        </fieldset>
+        <fieldset class="fieldset">
+          <legend class="fieldset-legend">Sources <span class="badge badge-ghost badge-sm" x-show="sources.length" x-text="sources.length + ' selected'"></span></legend>
+          <div class="dropdown w-full" x-bind:class="sourcePickerOpen ? 'dropdown-open' : 'dropdown-close'" x-on:click.outside="sourcePickerOpen = false">
+            <button class="btn btn-sm w-full justify-between" type="button" x-on:click="sourcePickerOpen = !sourcePickerOpen" x-bind:aria-expanded="sourcePickerOpen">
+              <span class="flex min-w-0 items-center gap-2">
+                {{icon "lucide:database"}}
+                <span class="truncate" x-text="sourcePickerLabel()"></span>
+              </span>
+              <span class="flex items-center gap-2">
+                <span class="badge badge-primary badge-sm" x-show="sources.length" x-text="sources.length"></span>
+                {{icon "lucide:chevron-down"}}
+              </span>
+            </button>
+            <div class="dropdown-content z-50 mt-2 w-full rounded-box border border-base-300 bg-base-100 p-3 shadow-md sm:w-[28rem]" x-on:click.stop>
+              <div class="flex flex-wrap gap-1.5" x-show="sources.length">
+                <template x-for="source in sources" :key="source">
+                  <button class="badge badge-primary badge-sm gap-1 cursor-pointer" type="button" x-on:click="removeSource(source)" x-bind:aria-label="'Remove source filter ' + sourceLabel(source)">
+                    <span x-text="sourceLabel(source)"></span>{{icon "lucide:x"}}
+                  </button>
+                </template>
+                <button class="badge badge-ghost badge-sm cursor-pointer" type="button" x-on:click="sources = []">Clear sources</button>
+              </div>
+              <div class="menu menu-sm mt-2 max-h-56 w-full flex-nowrap overflow-x-hidden overflow-y-auto rounded-box bg-base-100 p-0">
+                <template x-for="item in availableSources()" :key="item.value">
+                  <button type="button"
+                          class="flex w-full min-w-0 items-center justify-between gap-3 rounded-lg px-2 py-1.5 text-left hover:bg-base-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary"
+                          x-bind:aria-pressed="hasSource(item.value)"
+                          x-on:click="toggleSource(item.value)">
+                    <span class="min-w-0 flex-1 truncate" x-text="item.label"></span>
+                    <span class="badge badge-sm shrink-0" x-bind:class="hasSource(item.value) ? 'badge-primary' : 'badge-ghost'" x-text="hasSource(item.value) ? 'Selected' : 'Add'"></span>
+                  </button>
+                </template>
+              </div>
+            </div>
+          </div>
+        </fieldset>
+      </div>
+      <div class="divider my-2"></div>
+      <div class="grid gap-3 sm:flex sm:flex-wrap sm:items-center">
+        <div class="grid gap-1 sm:flex sm:items-center sm:gap-2">
+          <span class="text-xs text-base-content/60">Group by</span>
+          <div class="join w-full sm:w-auto">
+            <button type="button" class="btn btn-sm join-item {{if eq .GroupBy "source"}}btn-primary{{end}}" aria-pressed="{{if eq .GroupBy "source"}}true{{else}}false{{end}}" x-on:click="setGroupBy('source')">{{icon "lucide:database"}}Source</button>
+            <button type="button" class="btn btn-sm join-item {{if eq .GroupBy "tags"}}btn-primary{{end}}" aria-pressed="{{if eq .GroupBy "tags"}}true{{else}}false{{end}}" x-on:click="setGroupBy('tags')">{{icon "lucide:tag"}}Tag</button>
+          </div>
+        </div>
+        <div class="flex items-center justify-between gap-2 sm:ml-auto sm:justify-start">
+          <span class="text-xs text-base-content/60">Sort by</span>
+          <div class="dropdown dropdown-end" x-bind:class="sortPickerOpen ? 'dropdown-open' : 'dropdown-close'" x-on:click.outside="sortPickerOpen = false">
+            <button type="button" class="btn btn-sm gap-1" x-on:click="sortPickerOpen = !sortPickerOpen" x-bind:aria-expanded="sortPickerOpen">
+              {{icon "lucide:arrow-up-down"}}
+              <span x-text="{name: 'A → Z', favorites: 'Pinned first'}[sortMode]"></span>
+              {{icon "lucide:chevron-down"}}
+            </button>
+            <ul class="dropdown-content menu menu-sm bg-base-100 rounded-box shadow-md mt-2 w-44 z-50">
+              <li><a x-on:click.prevent="sortMode = 'name'; sortPickerOpen = false" x-bind:class="sortMode === 'name' ? 'menu-active' : ''">A → Z</a></li>
+              <li><a x-on:click.prevent="sortMode = 'favorites'; sortPickerOpen = false" x-bind:class="sortMode === 'favorites' ? 'menu-active' : ''">Pinned first</a></li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+
+  {{if .GroupNames}}
+  {{range $groupIndex, $groupName := .GroupNames}}
+  {{$groupServices := index $.Groups $groupName}}
+  {{$ids := serviceIDs $groupServices}}
+  <section x-show="groupOnPage({{$groupIndex}}) && groupVisible({{$ids}})" x-transition>
+    <div class="grid gap-2 border-b border-base-300 pb-2 sm:flex sm:flex-wrap sm:items-center sm:justify-between sm:gap-3">
+      <button type="button" class="flex cursor-pointer items-center gap-2 text-left grow min-w-0 rounded-lg px-2 py-1 -mx-2 hover:bg-base-200 transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary" data-group="{{$groupName}}" x-on:click="toggleGroup($el.dataset.group)" aria-label="Toggle group">
+        <span class="transition-transform shrink-0 text-base-content/60" data-group="{{$groupName}}" x-bind:class="groupCollapsed($el.dataset.group) ? '-rotate-90' : ''">{{icon "lucide:chevron-down"}}</span>
+        <p class="text-base font-semibold truncate">{{groupLabel . $.GroupBy $groupServices}}</p>
+        <span class="badge badge-ghost badge-sm" x-text="filteredGroupIDs({{$ids}}).length"></span>
+      </button>
+    </div>
+    <div class="mt-3 grid gap-3 sm:mt-4 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3" data-group="{{$groupName}}" x-show="!groupCollapsed($el.dataset.group)" x-transition>
+      {{range $groupServices}}
+      <article class="card bg-base-100 shadow-sm hover:shadow-md transition-shadow border border-base-300"
+               data-service-id="{{.ID}}"
+               data-group="{{$groupName}}"
+               x-show="visibleInGroup($el.dataset.serviceId, {{$ids}}, $el.dataset.group)"
+               x-effect="$el.style.order = sortedIDs({{$ids}}).indexOf($el.dataset.serviceId)"
+               x-transition>
+        <div class="card-body gap-3 p-4 sm:gap-4 sm:p-6">
+          {{$logo := logo .Icon .Name .SourceType}}
+          <div class="flex items-start gap-3 sm:gap-4">
+            {{if eq $logo.Kind "image"}}
+            <div class="avatar">
+              <div class="w-10 rounded-lg"><img src="{{$logo.URL}}" alt="{{.Name}} logo" loading="lazy"></div>
+            </div>
+            {{else}}
+            <div class="avatar avatar-placeholder">
+              <div class="bg-neutral text-neutral-content w-10 rounded-lg"><span class="text-sm">{{$logo.Text}}</span></div>
+            </div>
+            {{end}}
+            <div class="min-w-0 flex-1">
+              <h3 class="card-title truncate">{{.Name}}</h3>
+              <button class="badge badge-outline badge-sm mt-1 cursor-pointer transition-colors hover:badge-ghost focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary" type="button" data-source="{{.SourceID}}" x-on:click="selectSource($el.dataset.source)" aria-label="Filter by source {{sourceLabel .SourceType .Source}}">{{sourceLabel .SourceType .Source}}</button>
+            </div>
+            <div class="tooltip" data-service-id="{{.ID}}" x-bind:data-tip="isFavorite($el.dataset.serviceId) ? 'Unpin' : 'Pin'">
+              <button class="btn btn-ghost btn-sm btn-square" type="button" data-service-id="{{.ID}}" x-on:click="toggleFavorite($el.dataset.serviceId)" x-bind:class="isFavorite($el.dataset.serviceId) ? 'text-warning' : 'text-base-content/40'" aria-label="Toggle pinned">
+                <span data-service-id="{{.ID}}" x-show="isFavorite($el.dataset.serviceId)">{{icon "solar:star-bold"}}</span>
+                <span data-service-id="{{.ID}}" x-show="!isFavorite($el.dataset.serviceId)">{{icon "lucide:star"}}</span>
+              </button>
+            </div>
+          </div>
+          {{if .Description}}<p class="line-clamp-3 text-base-content/80">{{.Description}}</p>{{else}}<p class="text-sm italic text-base-content/50">No description provided.</p>{{end}}
+          {{if .Tags}}
+          <div class="flex flex-wrap gap-1.5">
+            {{range $index, $tag := .Tags}}
+              {{if eq $index 0}}
+              <button class="badge badge-primary badge-sm max-w-full cursor-pointer truncate border-primary bg-primary text-primary-content focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary" type="button" data-tag="{{$tag}}" x-bind:aria-pressed="hasTag($el.dataset.tag)" x-on:click="selectTag($el.dataset.tag)">{{$tag}}</button>
+              {{else}}
+              <button class="badge badge-outline badge-sm max-w-full cursor-pointer truncate border-primary/40 text-primary transition-colors hover:bg-primary hover:text-primary-content focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary {{if ge $index 5}}hidden sm:inline-flex{{end}}" type="button" data-tag="{{$tag}}" x-bind:aria-pressed="hasTag($el.dataset.tag)" x-on:click="selectTag($el.dataset.tag)">{{$tag}}</button>
+              {{end}}
+            {{end}}
+            {{if gt (len .Tags) 5}}<span class="badge badge-ghost badge-sm sm:hidden">+{{sub (len .Tags) 5}} more</span>{{end}}
+          </div>
+          {{end}}
+          <div class="mt-auto grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] items-center gap-2 border-t border-base-300 pt-2 sm:flex">
+            <a class="btn btn-primary btn-sm w-full sm:w-auto" href="{{.URL}}" target="_blank" rel="noopener" data-service-id="{{.ID}}" x-on:click="trackRecent($el.dataset.serviceId)">{{icon "lucide:external-link"}}Open</a>
+            <a class="btn btn-sm btn-ghost w-full sm:w-auto" href="/services/{{.ID}}" data-service-id="{{.ID}}" x-on:click="trackRecent($el.dataset.serviceId)">{{icon "lucide:info"}}Details</a>
+            <div class="tooltip justify-self-end sm:ml-auto" data-tip="Copy URL">
+              <button class="btn btn-ghost btn-sm btn-square" type="button" data-copy="{{.URL}}" x-on:click="copy($el.dataset.copy)" aria-label="Copy URL">{{icon "lucide:copy"}}</button>
+            </div>
+          </div>
+        </div>
+      </article>
+      {{end}}
+    </div>
+    <div class="mt-4 flex justify-center" data-group="{{$groupName}}" x-show="!groupCollapsed($el.dataset.group) && groupHasMore({{$ids}}, $el.dataset.group)">
+      <button class="btn btn-sm btn-ghost gap-2" type="button" data-group="{{$groupName}}" x-on:click="showMore($el.dataset.group, {{$ids}})">
+        {{icon "lucide:chevron-down"}}
+        <span>Show <span x-text="Math.min(pageSize, groupHiddenCount({{$ids}}, '{{$groupName}}'))"></span> more</span>
+        <span class="text-base-content/60" x-text="'(' + groupHiddenCount({{$ids}}, '{{$groupName}}') + ' remaining)'"></span>
+      </button>
+    </div>
+  </section>
+  {{end}}
+
+  <div role="alert" class="alert alert-warning" x-show="hasFilters() && !anyVisible()" x-transition>
+    {{icon "lucide:search-x"}}
+    <div>
+      <p class="font-bold">No matching services</p>
+      <div class="text-sm">Try clearing a search term, tag, or source filter.</div>
+    </div>
+  </div>
+
+  {{if gt (len .GroupNames) 3}}
+  <div class="flex justify-center mt-4" x-show="!hasFilters() && groupsTotalPages({{len .GroupNames}}) > 1">
+    <div class="join">
+      <button class="btn btn-sm join-item" type="button"
+              x-on:click="prevGroupsPage()"
+              x-bind:disabled="groupsPage <= 1">{{icon "lucide:chevron-left"}}Prev</button>
+      <span class="btn btn-sm join-item pointer-events-none cursor-default bg-base-100 text-base-content opacity-100" aria-live="polite"
+            x-text="groupsPageLabel({{len .GroupNames}})"></span>
+      <button class="btn btn-sm join-item" type="button"
+              x-on:click="nextGroupsPage({{len .GroupNames}})"
+              x-bind:disabled="groupsPage >= groupsTotalPages({{len .GroupNames}})">Next{{icon "lucide:chevron-right"}}</button>
+    </div>
+  </div>
+  {{end}}
+  {{else}}
+  <div role="alert" class="alert alert-info">
+    {{icon "lucide:info"}}
+    <div>
+      <p class="font-bold">No services discovered</p>
+      <div class="text-sm">Add a static, API, Kubernetes, or Tailscale source to render services here.</div>
+    </div>
+  </div>
+  {{end}}
+</div>
+{{template "base-end" .}}{{end}}

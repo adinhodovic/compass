@@ -1,0 +1,7 @@
+# Tiny multi-stage image: alpine for the shell, headscale binary copied
+# from the official distroless image. Used by the headscale-init compose
+# service to chain user / node / api-key bootstrap in one container.
+FROM headscale/headscale:0.28.0 AS hsc
+FROM alpine:3.20
+RUN apk add --no-cache jq
+COPY --from=hsc /ko-app/headscale /usr/local/bin/headscale

@@ -1,0 +1,32 @@
+{{- if .Values.rbac.create -}}
+{{- $kind := default "ClusterRole" .Values.rbac.scope -}}
+apiVersion: rbac.authorization.k8s.io/v1
+kind: {{ $kind }}
+metadata:
+  name: {{ include "compass.fullname" . }}
+  labels:
+    {{- include "compass.labels" . | nindent 4 }}
+rules:
+  # Gateway API: the kubernetes source's default discovery surface.
+  - apiGroups: ["gateway.networking.k8s.io"]
+    resources: ["httproutes", "grpcroutes"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["networking.k8s.io"]
+    resources: ["ingresses"]
+    verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: {{ $kind }}Binding
+metadata:
+  name: {{ include "compass.fullname" . }}
+  labels:
+    {{- include "compass.labels" . | nindent 4 }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: {{ $kind }}
+  name: {{ include "compass.fullname" . }}
+subjects:
+  - kind: ServiceAccount
+    name: {{ include "compass.serviceAccountName" . }}
+    namespace: {{ .Release.Namespace }}
+{{- end }}

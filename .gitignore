@@ -1,0 +1,19 @@
+/compass
+/compass-linux-amd64
+/compass-linux-arm64
+.envrc
+.env
+bin
+coverage.txt
+node_modules/
+internal/server/static/
+playwright-report/
+test-results/
+site/
+deploy/dev/.headscale-key
+deploy/dev/.kube/
+
+# Override global gitignore patterns (e.g. a personal `debug.*` rule)
+# that would otherwise swallow source files shipping with the repo.
+!internal/server/templates/pages/debug.html
+

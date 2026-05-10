@@ -1,0 +1,37 @@
+[build]
+# Air owns the full dev rebuild pipeline: CSS first (so the //go:embed in
+# internal/server/ picks up fresh styles), then `go build`. No parallel
+# tailwind watcher → no race against the embed. The asset copy uses the
+# shared tools/build-assets.mjs script so vendored libraries refresh too.
+pre_cmd = [
+  "node tools/build-assets.mjs",
+  "npx tailwindcss -i assets/input.css -o internal/server/static/app.css",
+]
+cmd = "go build -o ./bin/compass ./cmd/compass"
+bin = "bin/compass"
+full_bin = "APP_ENV=dev ./bin/compass -c deploy/dev/compass.yaml"
+
+# Files that should trigger a rebuild:
+# - .go: source.
+# - .html: templates (embedded; also drive Tailwind class scanning).
+# - .css/.js: assets/input.css and assets/app.js (the static/ outputs are
+#   excluded below so air doesn't loop on its own pre_cmd write).
+# - .yaml: internal/catalog/services.yaml (embedded) and the dev config.
+# Markdown is intentionally not watched — pages live in deploy/dev/pages
+# and are read on each request at runtime.
+include_ext = ["go", "html", "css", "js", "yaml"]
+
+# node_modules and zensical's site/ are build outputs. deploy/dev/pages
+# and deploy/dev/catalog are read at runtime — touching them shouldn't
+# rebuild. internal/server/static is excluded so the pre_cmd's CSS write
+# doesn't trigger another rebuild loop.
+exclude_dir = [
+  "bin",
+  "node_modules",
+  "site",
+  "docs",
+  "tmp",
+  "deploy/dev/pages",
+  "deploy/dev/catalog",
+  "internal/server/static",
+]

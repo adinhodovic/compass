@@ -1,0 +1,22 @@
+# Dev Caddyfile for portal's API-source test. The admin API is exposed on :2019
+# so the portal can list routes from /config/apps/http/servers/srv0/routes.
+#
+# `admin :2019` binds the admin API to every interface (Caddy's default is
+# localhost:2019). Convenient for compose-internal access but never copy
+# this into a production Caddyfile — admin endpoints are unauthenticated.
+
+{
+	admin :2019
+}
+
+http://grafana.localhost {
+	respond "stub: grafana"
+}
+
+http://prometheus.localhost {
+	respond "stub: prometheus"
+}
+
+http://localhost {
+	respond "caddy dev stack - try /grafana.localhost or /prometheus.localhost via /etc/hosts"
+}

@@ -1,0 +1,14 @@
+.git
+.github
+node_modules
+internal/server/static
+compass
+compass-linux-amd64
+compass-linux-arm64
+coverage.txt
+tmp
+site
+test-results
+playwright-report
+.cache
+.env

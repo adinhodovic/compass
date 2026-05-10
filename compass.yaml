@@ -1,0 +1,178 @@
+# compass.yaml — fully-annotated reference config.
+#
+# Most fields shown here are optional and commented-out with their defaults.
+# A minimal working file only needs `organization.name` and one entry under
+# `services.sources:` (see deploy/dev/compass.yaml for the dev variant).
+#
+# The whole file supports ${VAR} interpolation before YAML parsing.
+# Bare $VAR stays literal so bcrypt hashes work inline.
+
+# ──────────────────────────────────────────────────────────────────
+# Branding
+# ──────────────────────────────────────────────────────────────────
+
+organization:
+  name: Compass                           # required; shown in navbar / title
+  description: Homelab services discovered from Kubernetes, Docker, Tailscale, APIs, and static config.
+  logo: lucide:compass                    # compact icon: dashboardicons:slug, iconify spec, or absolute URL
+  # full_logo: https://example.com/wordmark.svg  # optional wide header/footer logo
+
+ui:
+  default_group_by: source                # source (default) | tags
+  # primary_color: "#2563eb"              # any CSS color; dark variant auto-derived
+
+# logging:
+#   format: text                          # text (default) | json
+#   level: info                           # debug | info | warn | error
+
+# ──────────────────────────────────────────────────────────────────
+# Catalog overrides — adjust descriptions / icons / tags for the
+# embedded catalog or add purely-local entries. See docs/catalog.md.
+# ──────────────────────────────────────────────────────────────────
+
+# catalog:
+#   path: catalog/                        # directory of *.yaml / *.yml override files
+
+# ──────────────────────────────────────────────────────────────────
+# Markdown pages — drop *.md files in pages.dir to add /pages/{slug}.
+# Sub-directories become navbar dropdowns. See docs/pages.md.
+# ──────────────────────────────────────────────────────────────────
+
+# pages:
+#   dir: pages
+
+# home:
+#   page: welcome                         # render pages/welcome.md at "/"
+#   # section: about                      # optional sub-directory
+
+# ──────────────────────────────────────────────────────────────────
+# Auth — three modes, see docs/configuration.md#auth for details.
+#   * Open  : leave required=false and basic.users empty
+#   * Forward: required=true (upstream proxy injects user_header)
+#   * Basic  : populate basic.users (mutually exclusive with required=true)
+# ──────────────────────────────────────────────────────────────────
+
+# auth:
+#   user_header: X-Forwarded-User         # default
+#   email_header: X-Forwarded-Email       # default
+#   required: true                        # forward auth: 401 without user header
+#   trusted_proxies:                      # optional CIDR/IP allowlist
+#     - 10.0.0.0/8
+#   basic:
+#     users:
+#       - name: admin
+#         password_hash: ${PORTAL_ADMIN_HASH}   # bcrypt; htpasswd -BnC 10 USER
+
+# ──────────────────────────────────────────────────────────────────
+# Operator-only routes. /debug exposes per-source status and the full
+# service inventory; on by default. Set enabled: false to suppress
+# (any /debug request returns 404).
+# ──────────────────────────────────────────────────────────────────
+
+# debug:
+#   enabled: false
+
+# ──────────────────────────────────────────────────────────────────
+# Static navbar / footer links — not tied to any source.
+# ──────────────────────────────────────────────────────────────────
+
+# header_links:
+#   - { label: Docs,   url: https://docs.example.com,   icon: lucide:book-open }
+#   - { label: Status, url: https://status.example.com, icon: lucide:activity }
+#   - label: Tools
+#     icon: lucide:wrench
+#     links:
+#       - { label: Grafana,    url: https://grafana.example.com }
+#       - { label: Prometheus, url: https://prometheus.example.com }
+
+# footer_links:
+#   - { label: GitHub, url: https://github.com/your-org/your-repo }
+
+# ──────────────────────────────────────────────────────────────────
+# Discovery sources + post-aggregation filters.
+# ──────────────────────────────────────────────────────────────────
+
+services:
+  # filters:                              # apply uniformly across every source
+  #   exclude_url_patterns:
+  #     - "*.internal.example.com"
+  #     - staging.example.com
+  #   dedupe_www: true                    # default
+  #   exclude_wildcard_hosts: true        # default
+
+  sources:
+    # Hand-curated YAML — full Service shape. Useful for one-off services
+    # that don't have a discoverable surface (a static landing page, an
+    # external SaaS dashboard, etc.).
+    - type: static
+      name: manual
+      tags: [homelab]                     # source-level tags prepend to every service's tags
+      services:
+        - name: Grafana
+          url: https://grafana.local
+          tags: [core, monitoring]
+          description: Dashboards and observability context.
+          icon: selfhst:grafana
+          panels:
+            - title: CPU
+              url: https://grafana.local/d-solo/example?panelId=1
+        - name: Prometheus
+          url: https://prometheus.local
+          tags: [core, monitoring]
+          description: Metrics and PromQL.
+          icon: selfhst:prometheus
+
+    # Discovers Gateway API HTTPRoute / GRPCRoute and Kubernetes Ingress. See docs/sources.md
+    # for in-cluster vs. remote-cluster credential setups.
+    - type: kubernetes
+      name: cluster
+      kubernetes:
+        namespaces: []                    # [] = all namespaces
+        auto_discover_all: true           # false = require compass.adinhodovic.com/enabled=true label
+
+    # Tailscale devices by default; Services are opt-in while the API is alpha.
+    # Credentials normally come
+    # from TAILSCALE_TAILNET_ID + TAILSCALE_OAUTH_CLIENT_{ID,SECRET} env vars.
+    - type: tailscale
+      name: tailnet
+      tailscale:
+        oauth_scopes: [devices:core:read]
+        url_scheme: https
+        tags: [tailscale]
+        include_services: false             # default false; Services are alpha and not yet API-supported
+        include_devices: true               # default true; requires devices:core:read
+        service_tags: [service]
+        device_tags: [node]
+
+    # Self-hosted Headscale (gRPC). API key from `headscale apikeys create`.
+    - type: headscale
+      name: headscale
+      tags: [headscale, vpn]
+      headscale:
+        address: ${HEADSCALE_ADDRESS}
+        api_key: ${HEADSCALE_API_KEY}
+        url_scheme: http
+        device_tags: [node]
+
+    # Docker — container labels (or Traefik Host(...) rule fallback).
+    # - type: docker
+    #   name: local
+    #   tags: [docker]
+    #   docker:
+    #     host: /var/run/docker.sock
+    #     auto_discover_all: true
+    #     url_scheme: https
+
+    # Generic JSON API — Consul, Nomad, custom internal endpoints.
+    # - type: api
+    #   name: consul
+    #   tags: [consul]
+    #   endpoint: http://consul.local:8500/v1/agent/services
+    #   headers:
+    #     Authorization: Bearer ${CONSUL_TOKEN}
+    #   mapping:
+    #     items_mode: values                # default: array
+    #     fields:
+    #       name: Service
+    #       url: Meta.url
+    #       tags: Tags
