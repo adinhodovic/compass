@@ -62,16 +62,28 @@ Create the name of the service account to use
 {{- end }}
 
 {{/*
-Name of the ConfigMap that holds compass.yaml. When the user supplies
-existingConfigMap.name we mount that one verbatim; otherwise the chart
-generates one named {fullname}-config.
+Name of the object that holds compass.yaml. When the user supplies an
+existing ConfigMap or Secret we mount that one verbatim; otherwise the
+chart generates a ConfigMap named {fullname}-config.
 */}}
-{{- define "compass.configMapName" -}}
-{{- if .Values.existingConfigMap.name }}
+{{- define "compass.configObjectName" -}}
+{{- if and .Values.existingConfigMap.name .Values.existingSecret.name }}
+{{- fail "existingConfigMap.name and existingSecret.name are mutually exclusive" }}
+{{- else if .Values.existingSecret.name }}
+{{- .Values.existingSecret.name }}
+{{- else if .Values.existingConfigMap.name }}
 {{- .Values.existingConfigMap.name }}
 {{- else }}
 {{- printf "%s-config" (include "compass.fullname" .) }}
 {{- end }}
+{{- end }}
+
+{{- define "compass.configMapName" -}}
+{{- include "compass.configObjectName" . }}
+{{- end }}
+
+{{- define "compass.configVolumeKind" -}}
+{{- if .Values.existingSecret.name -}}secret{{- else -}}configMap{{- end -}}
 {{- end }}
 
 {{/*
