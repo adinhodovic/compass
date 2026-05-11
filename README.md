@@ -41,7 +41,9 @@ services:
 ```
 
 ```bash
+# Add the host's docker GID so the non-root container user can read the socket. Alternatively use: tecnativa/docker-socket-proxy
 docker run --rm -p 8080:8080 \
+  --group-add $(getent group docker | cut -d: -f3) \
   -v /var/run/docker.sock:/var/run/docker.sock:ro \
   -v $PWD/compass.yaml:/etc/compass/compass.yaml:ro \
   adinhodovic/compass:latest \
