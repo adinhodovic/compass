@@ -56,16 +56,23 @@ type Server struct {
 	devMode bool
 }
 
-// User represents a forwarded-auth user. Fields are empty strings when no
+// User represents a forwarded-auth user. Fields are empty / nil when no
 // trusted headers are present.
 type User struct {
-	Name  string
-	Email string
+	Name   string
+	Email  string
+	Groups []string
 }
 
 // LoggedIn reports whether forwarded-auth headers identified a user.
 func (u User) LoggedIn() bool {
 	return u.Name != "" || u.Email != ""
+}
+
+// InGroup reports whether the user is a member of the named group.
+// Comparison is case-sensitive — match the casing your proxy emits.
+func (u User) InGroup(name string) bool {
+	return slices.Contains(u.Groups, name)
 }
 
 // Base is the common data every page template gets. The command palette
@@ -453,7 +460,34 @@ func (s Server) userFrom(r *http.Request) User {
 	if h := s.cfg.Auth.EmailHeader; h != "" {
 		u.Email = strings.TrimSpace(r.Header.Get(h))
 	}
+	if h := s.cfg.Auth.GroupsHeader; h != "" {
+		u.Groups = parseGroups(r.Header.Get(h))
+	}
 	return u
+}
+
+// parseGroups splits a forwarded-groups header on the separators commonly
+// emitted by reverse-auth proxies (oauth2-proxy uses commas, Authelia
+// uses commas, some Traefik setups pipes), trimming whitespace and
+// dropping empty entries. Returns nil when no groups are present so the
+// User keeps a zero-valued slice.
+func parseGroups(raw string) []string {
+	if strings.TrimSpace(raw) == "" {
+		return nil
+	}
+	fields := strings.FieldsFunc(raw, func(r rune) bool {
+		return r == ',' || r == ';' || r == '|'
+	})
+	out := make([]string, 0, len(fields))
+	for _, f := range fields {
+		if g := strings.TrimSpace(f); g != "" {
+			out = append(out, g)
+		}
+	}
+	if len(out) == 0 {
+		return nil
+	}
+	return out
 }
 
 func (s Server) page(w http.ResponseWriter, r *http.Request) {

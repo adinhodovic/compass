@@ -14,6 +14,7 @@ auth:
     users:
       - name: admin
         password_hash: $2a$10$He3AU65PBOkfE3oeq0dRxuYvEbBkWECslj3JchYXRVAAqoA6FIaAu
+        groups: [admins, ops]
 
 # Catalog overrides merged onto the embedded base in lexical order.
 catalog:

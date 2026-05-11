@@ -221,6 +221,71 @@ func TestVerifyBasicConstantTime(t *testing.T) {
 	}
 }
 
+func TestAuthMiddlewareForwardAuthRequiredGroups(t *testing.T) {
+	cfg := config.AuthConfig{
+		UserHeader:     "X-Forwarded-User",
+		GroupsHeader:   "X-Forwarded-Groups",
+		Required:       true,
+		RequiredGroups: []string{"admin", "ops"},
+	}
+	mw := testAuthMiddleware(t, okHandler(), cfg)
+
+	tests := []struct {
+		name   string
+		groups string
+		want   int
+	}{
+		{"no group header", "", http.StatusForbidden},
+		{"unrelated group", "developers", http.StatusForbidden},
+		{"matching group", "ops", http.StatusOK},
+		{"matching among many", "developers, ops, ext", http.StatusOK},
+		{"pipe separator", "a|admin|b", http.StatusOK},
+		{"semicolon separator", "a;admin;b", http.StatusOK},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			req := httptest.NewRequest("GET", "/", nil)
+			req.Header.Set("X-Forwarded-User", "alice")
+			if tt.groups != "" {
+				req.Header.Set("X-Forwarded-Groups", tt.groups)
+			}
+			rec := httptest.NewRecorder()
+			mw.ServeHTTP(rec, req)
+			if rec.Code != tt.want {
+				t.Errorf("groups=%q: want %d, got %d", tt.groups, tt.want, rec.Code)
+			}
+		})
+	}
+}
+
+func TestParseGroups(t *testing.T) {
+	tests := []struct {
+		in   string
+		want []string
+	}{
+		{"", nil},
+		{"   ", nil},
+		{"admin", []string{"admin"}},
+		{"admin,ops", []string{"admin", "ops"}},
+		{" admin , ops ", []string{"admin", "ops"}},
+		{"admin;ops|dev", []string{"admin", "ops", "dev"}},
+		{",,admin,,", []string{"admin"}},
+	}
+	for _, tt := range tests {
+		got := parseGroups(tt.in)
+		if len(got) != len(tt.want) {
+			t.Errorf("parseGroups(%q): len = %d, want %d (%v vs %v)",
+				tt.in, len(got), len(tt.want), got, tt.want)
+			continue
+		}
+		for i := range got {
+			if got[i] != tt.want[i] {
+				t.Errorf("parseGroups(%q)[%d] = %q, want %q", tt.in, i, got[i], tt.want[i])
+			}
+		}
+	}
+}
+
 func TestAuthMiddlewareExemptsProbeAndScrapePaths(t *testing.T) {
 	cfg := config.AuthConfig{
 		UserHeader: "X-Forwarded-User",
