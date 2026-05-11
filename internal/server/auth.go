@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"net"
 	"net/http"
+	"slices"
 	"strings"
 
 	"github.com/adinhodovic/compass/internal/config"
@@ -89,8 +90,24 @@ func basicAuthMiddleware(
 		// via the same header the forward-auth path uses, so userFrom()
 		// returns a logged-in user without code branching.
 		r.Header.Set(cfg.UserHeader, user)
+		if cfg.GroupsHeader != "" {
+			if groups := groupsForBasicUser(cfg.Basic.Users, user); len(groups) > 0 {
+				r.Header.Set(cfg.GroupsHeader, strings.Join(groups, ","))
+			}
+		}
 		next.ServeHTTP(w, r)
 	})
+}
+
+// groupsForBasicUser returns the configured groups for the named basic-auth
+// user. Only called after verifyBasic succeeds, so the name is trusted.
+func groupsForBasicUser(users []config.BasicAuthUser, name string) []string {
+	for _, u := range users {
+		if u.Name == name {
+			return u.Groups
+		}
+	}
+	return nil
 }
 
 func forwardAuthMiddleware(
@@ -99,6 +116,7 @@ func forwardAuthMiddleware(
 	matchers []trustedProxyMatcher,
 	_ *slog.Logger,
 ) http.Handler {
+	required := cfg.RequiredGroups
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if isAuthExempt(r.URL.Path) {
 			next.ServeHTTP(w, r)
@@ -112,8 +130,26 @@ func forwardAuthMiddleware(
 			http.Error(w, "Unauthorized", http.StatusUnauthorized)
 			return
 		}
+		if len(required) > 0 {
+			groups := parseGroups(r.Header.Get(cfg.GroupsHeader))
+			if !hasAnyGroup(groups, required) {
+				http.Error(w, "Forbidden", http.StatusForbidden)
+				return
+			}
+		}
 		next.ServeHTTP(w, r)
 	})
+}
+
+// hasAnyGroup reports whether `have` intersects `want`. Both sides are
+// expected to be small (single-digit lengths), so a nested loop is fine.
+func hasAnyGroup(have, want []string) bool {
+	for _, g := range have {
+		if slices.Contains(want, g) {
+			return true
+		}
+	}
+	return false
 }
 
 // isAuthExempt is the allowlist for paths the auth middleware lets through

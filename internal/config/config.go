@@ -201,9 +201,18 @@ type AuthConfig struct {
 	// EmailHeader is the request header containing the email address.
 	// Defaults to "X-Forwarded-Email". Read in all three modes.
 	EmailHeader string `yaml:"email_header"`
+	// GroupsHeader is the request header containing the user's groups.
+	// Defaults to "X-Forwarded-Groups". The value is split on commas,
+	// semicolons, or pipes; surrounding whitespace is trimmed. Read in
+	// all three modes.
+	GroupsHeader string `yaml:"groups_header"`
 	// Required enforces forward-auth: requests without the user header get
 	// HTTP 401. Mutually exclusive with `basic.users`.
 	Required bool `yaml:"required"`
+	// RequiredGroups, when non-empty, gates forward-auth: requests whose
+	// groups don't intersect this set get HTTP 403. Ignored unless
+	// `required: true`.
+	RequiredGroups []string `yaml:"required_groups"`
 	// TrustedProxies optionally restricts header trust to requests coming
 	// from these IPs/CIDRs (e.g. ["10.0.0.0/8", "192.168.1.5"]). Empty =
 	// trust headers from any caller (which is fine when Compass is only
@@ -223,10 +232,12 @@ type BasicAuthConfig struct {
 
 // BasicAuthUser is one credential pair. Password is bcrypt-hashed —
 // generate with `htpasswd -BnC 10 USER` (drop the `USER:` prefix) or any
-// bcrypt tool.
+// bcrypt tool. Groups is optional and lets local/basic-auth sessions
+// exercise the same group plumbing as forward-auth headers.
 type BasicAuthUser struct {
-	Name         string `yaml:"name"`
-	PasswordHash string `yaml:"password_hash"`
+	Name         string   `yaml:"name"`
+	PasswordHash string   `yaml:"password_hash"`
+	Groups       []string `yaml:"groups"`
 }
 
 type OrganizationConfig struct {
@@ -438,6 +449,9 @@ func setDefaults(cfg *Config) {
 	if cfg.Auth.EmailHeader == "" {
 		cfg.Auth.EmailHeader = "X-Forwarded-Email"
 	}
+	if cfg.Auth.GroupsHeader == "" {
+		cfg.Auth.GroupsHeader = "X-Forwarded-Groups"
+	}
 	if cfg.Debug.Enabled == nil {
 		on := true
 		cfg.Debug.Enabled = &on
@@ -470,6 +484,16 @@ func validate(cfg *Config) error {
 		return fmt.Errorf(
 			"auth.required and auth.basic.users are mutually exclusive — pick forward auth or basic auth",
 		)
+	}
+	if len(cfg.Auth.RequiredGroups) > 0 && !cfg.Auth.Required {
+		return fmt.Errorf(
+			"auth.required_groups has no effect unless auth.required is true",
+		)
+	}
+	for i, g := range cfg.Auth.RequiredGroups {
+		if strings.TrimSpace(g) == "" {
+			return fmt.Errorf("auth.required_groups[%d]: must be non-empty", i)
+		}
 	}
 	for i, user := range cfg.Auth.Basic.Users {
 		if strings.TrimSpace(user.Name) == "" {

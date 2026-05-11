@@ -55,13 +55,17 @@ ui:
 # auth:
 #   user_header: X-Forwarded-User         # default
 #   email_header: X-Forwarded-Email       # default
+#   groups_header: X-Forwarded-Groups     # default; split on , ; |
 #   required: true                        # forward auth: 401 without user header
 #   trusted_proxies:                      # optional CIDR/IP allowlist
 #     - 10.0.0.0/8
+#   required_groups:                      # optional; 403 if user is in none
+#     - admins
 #   basic:
 #     users:
 #       - name: admin
 #         password_hash: ${COMPASS_ADMIN_HASH}   # bcrypt; htpasswd -BnC 10 USER
+#         groups: [admins, ops]                 # optional; injected as groups_header
 
 # ──────────────────────────────────────────────────────────────────
 # Operator-only routes. /debug exposes per-source status and the full

@@ -1,15 +1,19 @@
 {{define "page"}}{{template "base-start" .}}
 <div class="grid gap-6 {{if .TOC}}lg:grid-cols-[1fr_minmax(0,16rem)] lg:gap-10 xl:gap-12{{end}}">
   <div class="grid gap-6 min-w-0">
+    {{$inlineUpdated := and (not .IsHome) (not .Page.Tags) (not .Page.UpdatedAt.IsZero)}}
     {{if not .IsHome}}
-    <nav class="breadcrumbs text-sm" aria-label="Breadcrumb">
-      <ul>
-        <li><a href="/">Home</a></li>
-        <li>{{.Page.Title}}</li>
-      </ul>
-    </nav>
+    <div class="flex flex-wrap items-center justify-between gap-3">
+      <nav class="breadcrumbs text-sm" aria-label="Breadcrumb">
+        <ul>
+          <li><a href="/">Home</a></li>
+          <li>{{.Page.Title}}</li>
+        </ul>
+      </nav>
+      {{if $inlineUpdated}}<span class="text-xs text-base-content/60">Updated {{timeAgo .Page.UpdatedAt}}</span>{{end}}
+    </div>
     {{end}}
-    {{if or .Page.Tags (not .Page.UpdatedAt.IsZero)}}
+    {{if or .Page.Tags (and (not .Page.UpdatedAt.IsZero) (not $inlineUpdated))}}
     <div class="flex flex-wrap items-center gap-2 text-xs text-base-content/60">
       {{range .Page.Tags}}<span class="badge badge-outline">{{.}}</span>{{end}}
       {{if not .Page.UpdatedAt.IsZero}}

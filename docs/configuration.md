@@ -132,12 +132,16 @@ Compass supports three modes:
 auth:
   user_header: X-Forwarded-User       # default
   email_header: X-Forwarded-Email     # default
+  groups_header: X-Forwarded-Groups   # default
 
   # Forward auth: enforce that an upstream proxy injects user_header.
   required: true
   trusted_proxies:                    # optional; warn-only when omitted
     - 10.0.0.0/8
     - 192.168.1.5
+  required_groups:                    # optional; when set, members of at least one are required
+    - admins
+    - ops
 
   # Basic auth (mutually exclusive with required: true).
   basic:
@@ -150,9 +154,11 @@ auth:
 | ----------------- | -------------------- | -------------------------------------- |
 | `user_header`     | `X-Forwarded-User`   | Username used for personalization scope and the user menu. |
 | `email_header`    | `X-Forwarded-Email`  | Email shown in the user menu.          |
+| `groups_header`   | `X-Forwarded-Groups` | Comma/semicolon/pipe-separated group list. Surfaced in the user menu and available to templates as `.User.Groups` / `.User.InGroup "name"`. |
 | `required`        | `false`              | When true, the middleware returns 401 if `user_header` is empty. |
+| `required_groups` | `[]`                 | Optional. When non-empty (and `required: true`), requests whose `groups_header` does not contain at least one of these values get 403. |
 | `trusted_proxies` | `[]`                 | Optional CIDR/IP allowlist. When set, requests from outside the list get 403. Empty means trust any caller, which is fine when Compass is only reachable through the proxy. The binary logs a warning at startup when `required: true` is paired with an empty list, since a misconfigured deployment would then trust spoofed `X-Forwarded-User` headers. |
-| `basic.users`     | `[]`                 | Each entry is `{name, password_hash}`. Hashes are bcrypt; generate with `htpasswd -BnC 10 USER` and strip the `USER:` prefix. |
+| `basic.users`     | `[]`                 | Each entry is `{name, password_hash, groups?}`. Hashes are bcrypt; generate with `htpasswd -BnC 10 USER` and strip the `USER:` prefix. The optional `groups` list is injected into `groups_header` on successful login, so basic-auth sessions can exercise the same group plumbing as forward auth (useful for local testing). |
 
 Anonymous users (open mode, no header set) get in-memory-only state for
 notes, favorites, and recents. Nothing is written to `localStorage`, so a
