@@ -280,7 +280,7 @@
           {{end}}
           <div class="mt-auto grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] items-center gap-2 border-t border-base-300 pt-2 sm:flex">
             <a class="btn btn-primary btn-sm w-full sm:w-auto" href="{{.URL}}" target="_blank" rel="noopener" data-service-id="{{.ID}}" x-on:click="trackRecent($el.dataset.serviceId)">{{icon "lucide:external-link"}}Open</a>
-            <a class="btn btn-sm btn-soft btn-neutral w-full sm:w-auto" href="/services/{{.ID}}" data-service-id="{{.ID}}" x-on:click="trackRecent($el.dataset.serviceId)">Details</a>
+            <a class="btn btn-sm btn-soft w-full sm:w-auto" href="/services/{{.ID}}" data-service-id="{{.ID}}" x-on:click="trackRecent($el.dataset.serviceId)">Details</a>
             <div class="tooltip justify-self-end sm:ml-auto" data-tip="Copy URL">
               <button class="btn btn-ghost btn-sm btn-square" type="button" data-copy="{{.URL}}" x-on:click="copy($el.dataset.copy)" aria-label="Copy URL">{{icon "lucide:copy"}}</button>
             </div>
