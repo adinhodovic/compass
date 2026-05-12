@@ -6,7 +6,7 @@ on:
   push:
     branches:
       - main
-  pull_request_target:
+  pull_request:
     types: [opened, reopened, synchronize, edited]
 
 permissions: read-all
@@ -14,7 +14,7 @@ permissions: read-all
 jobs:
   autolabeler:
     name: Update PR labels
-    if: github.event_name == 'pull_request_target'
+    if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions:
