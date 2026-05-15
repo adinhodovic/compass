@@ -56,7 +56,6 @@ catalog-backfilled when the source omits them.
 
 [dashboardicons]: https://dashboardicons.com/
 [selfhst]: https://selfh.st/icons/
-[iconify]: https://iconify.design/
 
 Use `dashboardicons:<name>` first for self-hosted apps; the
 [Dashboard Icons][dashboardicons] project aggregates [selfh.st][selfhst]
@@ -152,15 +151,14 @@ compass.adinhodovic.com/grafana-panels: "Traffic=https://grafana.local/d-solo/se
 ```
 
 Grafana and your ingress / SSO layer control embedding and authentication
-behavior. For private embeds, Grafana usually needs:
+behavior. For private embeds, Grafana usually needs
+[`allow_embedding`](https://grafana.com/docs/grafana/latest/setup-grafana/configure-grafana/#allow_embedding):
 
 ```ini
 [security]
 allow_embedding = true
 cookie_samesite = lax
 ```
-
-[grafana-embedding]: https://grafana.com/docs/grafana/latest/setup-grafana/configure-grafana/#allow_embedding
 
 #### Discovery gate
 
@@ -586,7 +584,7 @@ network.
 ##### Generic JSON API
 
 Anything else: point at the endpoint and map fields. Paths use
-[`gjson` syntax][gjson], including array indexes and escaped dots in object
+[`gjson` syntax](https://github.com/tidwall/gjson/blob/master/SYNTAX.md), including array indexes and escaped dots in object
 keys. The mapping language supports:
 
 - Object paths (`spec.hostnames.0`, `match.0.host.0`).
@@ -599,5 +597,3 @@ keys. The mapping language supports:
 The pattern across all of these is the same: encode the canonical URL in
 metadata at the source side, and let the API mapping read it. Compass
 stays unaware of the registering system's specifics.
-
-[gjson]: https://github.com/tidwall/gjson/blob/master/SYNTAX.md
