@@ -82,7 +82,7 @@ mode.
 
 ## Service shortcodes
 
-### `{{< services >}}` — filtered card grid
+### Filtered service card grid
 
 Embed a live, filtered list of currently-discovered services anywhere
 in a markdown page:
@@ -102,7 +102,7 @@ in a markdown page:
 | `tag`    | Only include services that carry this tag             |
 | `source` | Only include services from this source instance name  |
 
-### `{{< service id=… >}}` — single card
+### Single service card
 
 For runbooks that spotlight one specific service:
 
@@ -116,7 +116,7 @@ If multiple sources expose a service with the same name, add `source=`:
 {{< service id=grafana source=local >}}
 ```
 
-### `{{< panel service=… title=… >}}` — embedded Grafana panel
+### Embedded Grafana panel
 
 Pull one panel out of a service's `panels:` list and render it inline as
 an iframe:
@@ -151,7 +151,7 @@ literal, so examples like `` `{{< services tag=monitoring >}}` `` are safe.
 
 ## Code blocks and diagrams
 
-Fenced code blocks pass through [chroma][chroma] for server-side syntax
+Fenced code blocks pass through [chroma](https://github.com/alecthomas/chroma) for server-side syntax
 highlighting (github-dark theme out of the box; class-based, swappable
 without rebuilding the binary).
 
@@ -163,8 +163,6 @@ graph LR
   A --> B
 ```
 ````
-
-[chroma]: https://github.com/alecthomas/chroma
 
 ## Service backlinks
 
