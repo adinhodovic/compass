@@ -18,6 +18,11 @@
       <div class="stat-desc">across all sources</div>
     </div>
     <div class="stat min-w-0">
+      <div class="stat-title">Dropped</div>
+      <div class="stat-value text-2xl">{{len .Dropped}}</div>
+      <div class="stat-desc">filtered or invalid</div>
+    </div>
+    <div class="stat min-w-0">
       <div class="stat-title">User</div>
       <div class="stat-value wrap-anywhere text-lg sm:text-2xl">{{if .User.LoggedIn}}{{if .User.Name}}{{.User.Name}}{{else}}{{.User.Email}}{{end}}{{else}}anon{{end}}</div>
       <div class="stat-desc">{{if eq .AuthMode "basic"}}basic auth{{else if eq .AuthMode "forwarded"}}forwarded auth{{else}}open mode{{end}}</div>
@@ -29,7 +34,7 @@
     <fieldset class="fieldset">
       <legend class="fieldset-legend">Sources <span class="badge badge-ghost badge-sm" x-show="sources.length" x-text="sources.length + ' selected'"></span></legend>
       <div class="dropdown w-full" x-bind:class="sourcePickerOpen ? 'dropdown-open' : 'dropdown-close'" x-on:click.outside="sourcePickerOpen = false">
-        <button class="btn btn-sm w-full justify-between" type="button" x-on:click="sourcePickerOpen = !sourcePickerOpen" x-bind:aria-expanded="sourcePickerOpen">
+        <button class="btn btn-sm w-full justify-between" type="button" x-on:click="sourcePickerOpen = !sourcePickerOpen" x-bind:aria-expanded="sourcePickerOpen" aria-haspopup="listbox" aria-label="Choose source filters">
           <span class="flex min-w-0 items-center gap-2">
             {{icon "lucide:database"}}
             <span class="truncate" x-text="sourcePickerLabel()"></span>
@@ -48,11 +53,12 @@
             </template>
             <button class="badge badge-ghost badge-sm cursor-pointer" type="button" x-on:click="sources = []">Clear</button>
           </div>
-          <div class="menu menu-sm mt-2 max-h-56 w-full flex-nowrap overflow-x-hidden overflow-y-auto rounded-box bg-base-100 p-0">
+          <div class="menu menu-sm mt-2 max-h-56 w-full flex-nowrap overflow-x-hidden overflow-y-auto rounded-box bg-base-100 p-0" role="listbox" aria-label="Source filters">
             <template x-for="item in availableSources()" :key="item.value">
               <button type="button"
                       class="flex w-full min-w-0 items-center justify-between gap-3 rounded-lg px-2 py-1.5 text-left hover:bg-base-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary"
                       x-bind:aria-pressed="hasSource(item.value)"
+                      x-bind:aria-label="(hasSource(item.value) ? 'Remove source filter ' : 'Add source filter ') + item.label"
                       x-on:click="toggleSource(item.value)">
                 <span class="min-w-0 flex-1 truncate" x-text="item.label"></span>
                 <span class="badge badge-sm shrink-0" x-bind:class="hasSource(item.value) ? 'badge-primary' : 'badge-ghost'" x-text="hasSource(item.value) ? 'Selected' : 'Add'"></span>
@@ -81,6 +87,7 @@
 
   {{range $i, $status := .Statuses}}
   {{$svcs := index $.Groups $status.ID}}
+  {{$drops := index $.DroppedGroups $status.ID}}
   <section class="card bg-base-100 shadow-sm border border-base-300"
            data-source="{{$status.ID}}"
            data-errored="{{if $status.Error}}1{{else}}0{{end}}"
@@ -88,14 +95,37 @@
     <div class="card-body p-4 sm:p-6">
       <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div class="flex min-w-0 flex-wrap items-center gap-2 sm:gap-3">
-          {{if $status.Error}}<span class="badge badge-error">down</span>
-          {{else if $status.LastLoaded.IsZero}}<span class="badge badge-ghost">pending</span>
-          {{else}}<span class="badge badge-success">up</span>
+          {{if $status.Error}}<span class="badge badge-error" aria-label="Source {{$status.Name}} status down">down</span>
+          {{else if $status.LastLoaded.IsZero}}<span class="badge badge-ghost" aria-label="Source {{$status.Name}} status pending">pending</span>
+          {{else}}<span class="badge badge-success" aria-label="Source {{$status.Name}} status up">up</span>
           {{end}}
           <h2 class="card-title min-w-0 break-words">{{$status.Name}}</h2>
           <span class="badge badge-outline">{{$status.Type}}</span>
           <span class="basis-full text-xs text-base-content/60 sm:basis-auto">{{$status.Services}} services · {{timeAgo $status.LastLoaded}}</span>
         </div>
+        {{if $drops}}
+        <details class="dropdown dropdown-end self-start sm:self-auto">
+          <summary class="btn btn-warning btn-outline btn-sm gap-2" aria-label="Show {{len $drops}} dropped services for {{$status.Name}}">
+            {{icon "lucide:filter-x"}}
+            <span>Dropped</span>
+            <span class="badge badge-warning badge-sm">{{len $drops}}</span>
+          </summary>
+          <div class="dropdown-content z-40 mt-2 max-h-[min(24rem,calc(100vh-8rem))] w-[min(22rem,calc(100vw-2rem))] overflow-y-auto rounded-box border border-warning/30 bg-base-100 p-3 shadow-lg">
+            <p class="text-xs text-base-content/60">Returned by this source, then removed by registry validation or filters.</p>
+            <div class="mt-2 grid gap-2">
+              {{range $drops}}
+              <article class="rounded-box border border-base-300 bg-base-200/40 p-2">
+                <div class="flex flex-wrap items-center gap-2">
+                  <span class="badge badge-warning badge-sm">{{.Reason}}</span>
+                  <span class="font-medium break-words">{{if .Name}}{{.Name}}{{else}}unnamed{{end}}</span>
+                </div>
+                {{if .URL}}<p class="mt-1 font-mono text-xs wrap-anywhere text-base-content/60">{{.URL}}</p>{{end}}
+              </article>
+              {{end}}
+            </div>
+          </div>
+        </details>
+        {{end}}
       </div>
       {{if $status.Error}}
       <div role="alert" class="alert alert-error alert-soft mt-2">
@@ -112,8 +142,8 @@
               <p class="mt-1 truncate font-mono text-xs text-base-content/60">{{$service.ID}}</p>
             </div>
             <div class="flex shrink-0 gap-1">
-              <a class="btn btn-ghost btn-xs btn-square" href="/services/{{$service.ID}}" aria-label="View service details">{{icon "lucide:info"}}</a>
-              <a class="btn btn-ghost btn-xs btn-square" href="{{$service.URL}}" target="_blank" rel="noopener" aria-label="Open service">{{icon "lucide:external-link"}}</a>
+              <a class="btn btn-ghost btn-xs btn-square" href="/services/{{$service.ID}}" aria-label="View {{$service.Name}} details">{{icon "lucide:info"}}</a>
+              <a class="btn btn-ghost btn-xs btn-square" href="{{$service.URL}}" target="_blank" rel="noopener" aria-label="Open {{$service.Name}}">{{icon "lucide:external-link"}}</a>
             </div>
           </div>
           {{if $service.Tags}}
@@ -192,5 +222,6 @@
     </div>
   </div>
   {{end}}
+
 </div>
 {{template "base-end" .}}{{end}}

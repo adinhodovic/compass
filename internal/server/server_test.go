@@ -21,6 +21,19 @@ type staticProvider []compass.Service
 
 func (s staticProvider) Services() []compass.Service             { return []compass.Service(s) }
 func (s staticProvider) SourceStatuses() []registry.SourceStatus { return nil }
+func (s staticProvider) DroppedServices() []registry.DroppedService {
+	return nil
+}
+
+type debugProvider struct {
+	services []compass.Service
+	statuses []registry.SourceStatus
+	dropped  []registry.DroppedService
+}
+
+func (p debugProvider) Services() []compass.Service                { return p.services }
+func (p debugProvider) SourceStatuses() []registry.SourceStatus    { return p.statuses }
+func (p debugProvider) DroppedServices() []registry.DroppedService { return p.dropped }
 
 func TestServerRendersHomeAndDetail(t *testing.T) {
 	provider := staticProvider{{
@@ -30,6 +43,7 @@ func TestServerRendersHomeAndDetail(t *testing.T) {
 		Source:      "manual",
 		Tags:        []string{"monitoring"},
 		Description: "Dashboards",
+		Metadata:    map[string]any{"dashboard": "https://grafana.local"},
 		Panels: []compass.Panel{{
 			Title: "Cluster CPU",
 			URL:   "https://grafana.local/d-solo/cluster/cpu?panelId=1",
@@ -50,6 +64,7 @@ func TestServerRendersHomeAndDetail(t *testing.T) {
 			for _, want := range []string{
 				`title="Cluster CPU"`,
 				`src="https://grafana.local/d-solo/cluster/cpu?panelId=1"`,
+				`aria-label="Copy Dashboard value"`,
 				`<meta property="og:title" content="Grafana">`,
 				`<meta property="og:description" content="Dashboards">`,
 				`<meta property="og:url" content="http://example.com/services/manual-grafana">`,
@@ -74,6 +89,36 @@ func TestHomeRendersPinnedAndRecentEmptyStates(t *testing.T) {
 	}
 	body := resp.Body.String()
 	for _, want := range []string{"Pinned", "No pinned services.", "Recent", "No recent services."} {
+		if !strings.Contains(body, want) {
+			t.Fatalf("expected home to contain %q, got %q", want, body)
+		}
+	}
+}
+
+func TestHomeRendersSpecificActionLabels(t *testing.T) {
+	handler := New(config.Config{}, staticProvider{{
+		ID:         "manual-grafana",
+		Name:       "Grafana",
+		URL:        "https://grafana.local",
+		Source:     "manual",
+		SourceType: compass.SourceTypeStatic,
+		Tags:       []string{"monitoring"},
+	}}, discardLogger())
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	resp := httptest.NewRecorder()
+
+	handler.ServeHTTP(resp, req)
+
+	if resp.Code != http.StatusOK {
+		t.Fatalf("expected home to render 200, got %d", resp.Code)
+	}
+	body := resp.Body.String()
+	for _, want := range []string{
+		`aria-label="Toggle Monitoring group"`,
+		`data-service-name="Grafana"`,
+		`? 'Unpin ' : 'Pin '`,
+		`aria-label="Copy Grafana URL"`,
+	} {
 		if !strings.Contains(body, want) {
 			t.Fatalf("expected home to contain %q, got %q", want, body)
 		}
@@ -131,6 +176,33 @@ func TestDebugRouteEnabledByDefault(t *testing.T) {
 	if resp.Code != http.StatusOK {
 		t.Fatalf("expected /debug to render 200 by default, got %d\nbody: %q\nlogs: %s",
 			resp.Code, resp.Body.String(), logs.String())
+	}
+}
+
+func TestDebugRendersDroppedServices(t *testing.T) {
+	handler := New(config.Config{}, debugProvider{
+		statuses: []registry.SourceStatus{{Name: "manual", Type: compass.SourceTypeStatic}},
+		dropped: []registry.DroppedService{{
+			Name:       "Wildcard",
+			URL:        "https://*.example.com",
+			Source:     "manual",
+			SourceType: compass.SourceTypeStatic,
+			Reason:     "wildcard host excluded",
+		}},
+	}, discardLogger())
+	req := httptest.NewRequest(http.MethodGet, "/debug", nil)
+	resp := httptest.NewRecorder()
+
+	handler.ServeHTTP(resp, req)
+
+	if resp.Code != http.StatusOK {
+		t.Fatalf("expected /debug to render 200, got %d", resp.Code)
+	}
+	body := resp.Body.String()
+	for _, want := range []string{"Dropped", "Wildcard", "wildcard host excluded", "Returned by this source"} {
+		if !strings.Contains(body, want) {
+			t.Fatalf("expected debug page to contain %q, got %q", want, body)
+		}
 	}
 }
 

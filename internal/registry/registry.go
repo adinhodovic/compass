@@ -41,6 +41,7 @@ type Registry struct {
 	loadTimeout time.Duration
 
 	services atomic.Pointer[[]compass.Service]
+	dropped  atomic.Pointer[[]DroppedService]
 }
 
 // Filters narrows the aggregated service list. Applied after every source
@@ -83,6 +84,7 @@ type entryState struct {
 	// Stored as *[]compass.Service so we can swap atomically without
 	// per-read locking.
 	services atomic.Pointer[[]compass.Service]
+	dropped  atomic.Pointer[[]DroppedService]
 	// lastErr stores the most recent load error's message, or nil when
 	// the last load succeeded. atomic.Pointer[string] avoids a mutex
 	// while keeping snapshot reads lock-free.
@@ -220,6 +222,22 @@ type SourceStatus struct {
 	Error      string // empty when the last load succeeded
 }
 
+// DroppedService records a registry-owned decision to remove a service from
+// the published dashboard snapshot. It powers /debug explanations without
+// treating expected filtering as source errors.
+type DroppedService struct {
+	Name       string
+	URL        string
+	Source     string
+	SourceType string
+	Reason     string
+}
+
+// SourceID returns the canonical "<type>/<name>" identifier for grouping.
+func (d DroppedService) SourceID() string {
+	return d.SourceType + "/" + d.Source
+}
+
 // ID returns the canonical "<type>/<name>" identifier matching
 // compass.Service.SourceID, so the debug-page Groups map can be looked
 // up without colliding when two sources share a Name.
@@ -266,13 +284,17 @@ func (r *Registry) refreshEntry(ctx context.Context, e *entryState) error {
 		return err
 	}
 	out := make([]compass.Service, 0, len(loaded))
+	dropped := make([]DroppedService, 0)
 	for _, service := range loaded {
-		service, ok := r.normalize(service, e.src.Name(), e.src.Type())
+		service, drop, ok := r.normalize(service, e.src.Name(), e.src.Type())
 		if ok {
 			out = append(out, service)
+		} else if drop.Reason != "" {
+			dropped = append(dropped, drop)
 		}
 	}
 	e.services.Store(&out)
+	e.dropped.Store(&dropped)
 	e.lastErr.Store(nil)
 	metrics.ObserveSourceRefresh(sourceMetricLabel(e.src), len(out), time.Since(start), nil)
 	r.logSource(ctx, slog.LevelInfo, "Source load complete", e.src, slog.Int("services", len(out)))
@@ -291,17 +313,38 @@ func (e *entryState) snapshot() []compass.Service {
 	return nil
 }
 
+func (e *entryState) droppedSnapshot() []DroppedService {
+	if p := e.dropped.Load(); p != nil {
+		return cloneDroppedServices(*p)
+	}
+	return nil
+}
+
 // aggregate snapshots every entry's last known services into the shared
 // atomic pointer. Lock-free thanks to per-entry atomic.Pointer.
 func (r *Registry) aggregate() []compass.Service {
 	var combined []compass.Service
+	var dropped []DroppedService
 	for _, e := range r.entries {
 		combined = append(combined, e.snapshot()...)
+		dropped = append(dropped, e.droppedSnapshot()...)
 	}
-	combined = applyFilters(combined, r.filters)
+	combined, filterDropped := applyFiltersWithDropped(combined, r.filters)
+	dropped = append(dropped, filterDropped...)
 	Sort(combined)
+	SortDropped(dropped)
 	r.services.Store(&combined)
+	r.dropped.Store(&dropped)
 	return combined
+}
+
+// DroppedServices returns the current registry-level drop explanations. Safe
+// for concurrent use.
+func (r *Registry) DroppedServices() []DroppedService {
+	if p := r.dropped.Load(); p != nil {
+		return cloneDroppedServices(*p)
+	}
+	return nil
 }
 
 // applyFilters drops services that match an ExcludeURLPatterns entry,
@@ -309,11 +352,19 @@ func (r *Registry) aggregate() []compass.Service {
 // duplicates against a sibling `X`. Hosts are parsed once up-front so the
 // three filter passes don't each re-parse every URL.
 func applyFilters(services []compass.Service, f Filters) []compass.Service {
+	out, _ := applyFiltersWithDropped(services, f)
+	return out
+}
+
+func applyFiltersWithDropped(
+	services []compass.Service,
+	f Filters,
+) ([]compass.Service, []DroppedService) {
 	if len(services) == 0 {
-		return services
+		return services, nil
 	}
 	if !f.ExcludeWildcardHosts && len(f.ExcludeURLPatterns) == 0 && !f.DedupeWWW {
-		return services
+		return services, nil
 	}
 
 	hosts := make([]string, len(services))
@@ -321,11 +372,13 @@ func applyFilters(services []compass.Service, f Filters) []compass.Service {
 		hosts[i] = serviceHost(svc.URL)
 	}
 	drop := make([]bool, len(services))
+	reasons := make([]string, len(services))
 
 	if f.ExcludeWildcardHosts {
 		for i, h := range hosts {
 			if !drop[i] && strings.Contains(h, "*") {
 				drop[i] = true
+				reasons[i] = "wildcard host excluded"
 			}
 		}
 	}
@@ -334,6 +387,7 @@ func applyFilters(services []compass.Service, f Filters) []compass.Service {
 		for i, h := range hosts {
 			if !drop[i] && hostMatchesAny(h, f.ExcludeURLPatterns) {
 				drop[i] = true
+				reasons[i] = "URL host excluded by pattern"
 			}
 		}
 	}
@@ -348,17 +402,31 @@ func applyFilters(services []compass.Service, f Filters) []compass.Service {
 		for i, h := range hosts {
 			if !drop[i] && strings.HasPrefix(h, "www.") && hostSet[strings.TrimPrefix(h, "www.")] {
 				drop[i] = true
+				reasons[i] = "duplicate www host"
 			}
 		}
 	}
 
 	out := services[:0]
+	dropped := make([]DroppedService, 0)
 	for i, svc := range services {
-		if !drop[i] {
+		if drop[i] {
+			dropped = append(dropped, droppedFromService(svc, reasons[i]))
+		} else {
 			out = append(out, svc)
 		}
 	}
-	return out
+	return out, dropped
+}
+
+func droppedFromService(service compass.Service, reason string) DroppedService {
+	return DroppedService{
+		Name:       service.Name,
+		URL:        service.URL,
+		Source:     service.Source,
+		SourceType: service.SourceType,
+		Reason:     reason,
+	}
 }
 
 // serviceHost extracts the lowercase host from a service URL. Returns "" for
@@ -455,6 +523,25 @@ func Sort(services []compass.Service) {
 	})
 }
 
+func SortDropped(services []DroppedService) {
+	slices.SortStableFunc(services, func(a, b DroppedService) int {
+		if c := cmp.Compare(strings.ToLower(a.SourceID()), strings.ToLower(b.SourceID())); c != 0 {
+			return c
+		}
+		if c := cmp.Compare(strings.ToLower(a.Name), strings.ToLower(b.Name)); c != 0 {
+			return c
+		}
+		return cmp.Compare(a.URL, b.URL)
+	})
+}
+
+func cloneDroppedServices(services []DroppedService) []DroppedService {
+	if services == nil {
+		return nil
+	}
+	return append([]DroppedService(nil), services...)
+}
+
 func Group(services []compass.Service, mode string) map[string][]compass.Service {
 	groups := make(map[string][]compass.Service)
 	for _, service := range services {
@@ -480,18 +567,34 @@ func (r *Registry) normalize(
 	service compass.Service,
 	fallbackSource string,
 	fallbackType string,
-) (compass.Service, bool) {
+) (compass.Service, DroppedService, bool) {
+	drop := DroppedService{
+		Name:       strings.TrimSpace(service.Name),
+		URL:        strings.TrimSpace(service.URL),
+		Source:     fallbackSource,
+		SourceType: fallbackType,
+	}
+	if service.Source != "" {
+		drop.Source = service.Source
+	}
+	if service.SourceType != "" {
+		drop.SourceType = service.SourceType
+	}
 	service.Name = strings.TrimSpace(service.Name)
 	service.ID = strings.TrimSpace(service.ID)
 	service.PrimaryTag = strings.TrimSpace(service.PrimaryTag)
 	if service.Name == "" {
-		return compass.Service{}, false
+		drop.Reason = "missing name"
+		return compass.Service{}, drop, false
 	}
 	service.URL = meta.WithScheme(service.URL, "https")
 	if normalizedURL, ok := meta.ValidHTTPURL(service.URL); ok {
 		service.URL = normalizedURL
 	} else {
-		return compass.Service{}, false
+		drop.Name = service.Name
+		drop.URL = service.URL
+		drop.Reason = "invalid URL"
+		return compass.Service{}, drop, false
 	}
 	if service.Source == "" {
 		service.Source = fallbackSource
@@ -499,6 +602,8 @@ func (r *Registry) normalize(
 	if service.SourceType == "" {
 		service.SourceType = fallbackType
 	}
+	drop.Source = service.Source
+	drop.SourceType = service.SourceType
 	if service.ID == "" {
 		service.ID = slug.Make(service.SourceType + "-" + service.Source + "-" + service.Name)
 	}
@@ -526,7 +631,7 @@ func (r *Registry) normalize(
 		service.PrimaryTag = service.Tags[0]
 	}
 	service.Panels = validPanels(service.Panels, service)
-	return service, true
+	return service, DroppedService{}, true
 }
 
 func normalizePrimaryTag(primary string, tags []string) []string {

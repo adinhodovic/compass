@@ -65,7 +65,7 @@
         <input id="service-url" class="input min-w-0 w-full font-mono sm:join-item" readonly value="{{.Service.URL}}">
         <div class="grid grid-cols-2 gap-2 sm:contents">
           <button class="btn sm:join-item sm:flex-none" type="button" data-copy="{{.Service.URL}}" x-on:click="copy($el.dataset.copy)">{{icon "lucide:copy"}}URL</button>
-          <button class="btn btn-ghost sm:join-item sm:flex-none" type="button" data-copy="{{.Service.ID}}" x-on:click="copy($el.dataset.copy)">{{icon "lucide:hash"}}ID</button>
+          <button class="btn btn-soft sm:join-item sm:flex-none" type="button" data-copy="{{.Service.ID}}" x-on:click="copy($el.dataset.copy)">{{icon "lucide:hash"}}ID</button>
         </div>
       </div>
     </div>
@@ -108,14 +108,14 @@
           <p class="text-xs text-base-content/60">Source-provided fields for debugging and context.</p>
           </div>
         </div>
-        <span class="badge badge-info badge-soft">{{len (metadata .Service.Metadata)}} fields</span>
+        <span class="badge badge-info badge-soft" aria-label="{{len (metadata .Service.Metadata)}} metadata fields">{{len (metadata .Service.Metadata)}} fields</span>
       </div>
       <div class="grid gap-2 sm:hidden">
         {{range metadata .Service.Metadata}}
         <article class="rounded-box min-w-0 border border-base-300 bg-base-200/40 p-3">
           <div class="mb-2 flex items-start justify-between gap-2">
             <p class="min-w-0 break-words text-sm font-semibold">{{.Key}}</p>
-            <button class="btn btn-ghost btn-xs btn-square shrink-0" type="button" data-copy="{{.Value}}" x-on:click="copy($el.dataset.copy)" aria-label="Copy value">{{icon "lucide:copy"}}</button>
+            <button class="btn btn-ghost btn-xs btn-square shrink-0" type="button" data-copy="{{.Value}}" x-on:click="copy($el.dataset.copy)" aria-label="Copy {{.Key}} value">{{icon "lucide:copy"}}</button>
           </div>
           {{if .URL}}<a class="link link-primary block wrap-anywhere text-sm" href="{{.Value}}">{{.Value}}</a>{{else}}<pre class="max-w-full whitespace-pre-wrap wrap-anywhere font-mono text-xs">{{.Value}}</pre>{{end}}
         </article>
@@ -138,7 +138,7 @@
                 {{if .URL}}<a class="link link-primary break-words" href="{{.Value}}">{{.Value}}</a>{{else}}<pre class="font-mono text-xs whitespace-pre-wrap break-words">{{.Value}}</pre>{{end}}
               </td>
               <td class="align-top text-right">
-                <button class="btn btn-ghost btn-xs btn-square" type="button" data-copy="{{.Value}}" x-on:click="copy($el.dataset.copy)" aria-label="Copy value">{{icon "lucide:copy"}}</button>
+                <button class="btn btn-ghost btn-xs btn-square" type="button" data-copy="{{.Value}}" x-on:click="copy($el.dataset.copy)" aria-label="Copy {{.Key}} value">{{icon "lucide:copy"}}</button>
               </td>
             </tr>
             {{end}}

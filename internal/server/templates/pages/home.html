@@ -37,10 +37,10 @@
                   <span class="block truncate text-[11px] text-base-content/60" x-show="duplicateServiceName(service)" x-text="service.sourceLabel"></span>
                 </span>
               </a>
-              <button type="button"
-                      class="opacity-0 group-hover:opacity-100 transition-opacity text-base-content/50 hover:text-error"
-                      x-on:click.prevent.stop="toggleFavorite(service.id)"
-                      aria-label="Unpin">{{icon "lucide:x"}}</button>
+               <button type="button"
+                       class="opacity-0 group-hover:opacity-100 transition-opacity text-base-content/50 hover:text-error"
+                       x-on:click.prevent.stop="toggleFavorite(service.id)"
+                       x-bind:aria-label="'Unpin ' + service.name">{{icon "lucide:x"}}</button>
             </span>
           </template>
           <span class="badge badge-ghost badge-sm" x-show="favoriteServices().length > 6" x-text="'+' + (favoriteServices().length - 6) + ' more'"></span>
@@ -100,7 +100,7 @@
         <fieldset class="fieldset">
           <legend class="fieldset-legend">Tags <span class="badge badge-ghost badge-sm" x-show="tags.length" x-text="tags.length + ' selected'"></span></legend>
           <div class="dropdown w-full" x-show="usesTagSearchPicker()" x-bind:class="tagPickerOpen ? 'dropdown-open' : 'dropdown-close'" x-on:click.outside="tagPickerOpen = false">
-            <button class="btn btn-sm w-full justify-between" type="button" x-on:click="toggleTagPicker()" x-bind:aria-expanded="tagPickerOpen">
+            <button class="btn btn-sm w-full justify-between" type="button" x-on:click="toggleTagPicker()" x-bind:aria-expanded="tagPickerOpen" aria-haspopup="listbox" aria-label="Choose tag filters">
               <span class="flex min-w-0 items-center gap-2">
                 {{icon "lucide:tags"}}
                 <span class="truncate" x-text="tagPickerLabel()"></span>
@@ -112,8 +112,9 @@
             </button>
             <div class="dropdown-content z-50 mt-2 w-full rounded-box border border-base-300 bg-base-100 p-3 shadow-md sm:w-96" x-on:click.stop>
               <label class="input input-sm w-full">
+                <span class="sr-only">Search tags</span>
                 {{icon "lucide:search"}}
-                <input x-ref="tagSearch" type="search" class="grow" placeholder="Search tags" x-model.debounce.100ms="tagQuery" autocomplete="off">
+                <input x-ref="tagSearch" type="search" class="grow" placeholder="Search tags" aria-label="Search tags" x-model.debounce.100ms="tagQuery" autocomplete="off">
                 <button class="btn btn-ghost btn-xs" type="button" x-show="tagQuery" x-on:click="tagQuery = ''" aria-label="Clear tag search">{{icon "lucide:x"}}</button>
               </label>
               <div class="mt-3 flex flex-wrap gap-1.5" x-show="tags.length">
@@ -128,11 +129,12 @@
                 <span x-text="tagPickerResultLabel()"></span>
                 <span x-show="!tagQuery" x-text="'Showing ' + visibleTagOptions().length"></span>
               </div>
-              <div class="menu menu-sm mt-2 max-h-56 w-full flex-nowrap overflow-x-hidden overflow-y-auto rounded-box bg-base-100 p-0">
+              <div class="menu menu-sm mt-2 max-h-56 w-full flex-nowrap overflow-x-hidden overflow-y-auto rounded-box bg-base-100 p-0" role="listbox" aria-label="Tag filters">
                 <template x-for="item in visibleTagOptions()" :key="item">
                   <button type="button"
                           class="flex w-full min-w-0 items-center justify-between gap-3 rounded-lg px-2 py-1.5 text-left hover:bg-base-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary"
                           x-bind:aria-pressed="hasTag(item)"
+                          x-bind:aria-label="(hasTag(item) ? 'Remove tag filter ' : 'Add tag filter ') + item"
                           x-on:click="toggleTag(item)">
                     <span class="min-w-0 flex-1 truncate" x-text="item"></span>
                     <span class="flex shrink-0 items-center gap-2">
@@ -160,7 +162,7 @@
         <fieldset class="fieldset">
           <legend class="fieldset-legend">Sources <span class="badge badge-ghost badge-sm" x-show="sources.length" x-text="sources.length + ' selected'"></span></legend>
           <div class="dropdown w-full" x-bind:class="sourcePickerOpen ? 'dropdown-open' : 'dropdown-close'" x-on:click.outside="sourcePickerOpen = false">
-            <button class="btn btn-sm w-full justify-between" type="button" x-on:click="sourcePickerOpen = !sourcePickerOpen" x-bind:aria-expanded="sourcePickerOpen">
+            <button class="btn btn-sm w-full justify-between" type="button" x-on:click="sourcePickerOpen = !sourcePickerOpen" x-bind:aria-expanded="sourcePickerOpen" aria-haspopup="listbox" aria-label="Choose source filters">
               <span class="flex min-w-0 items-center gap-2">
                 {{icon "lucide:database"}}
                 <span class="truncate" x-text="sourcePickerLabel()"></span>
@@ -179,11 +181,12 @@
                 </template>
                 <button class="badge badge-ghost badge-sm cursor-pointer" type="button" x-on:click="sources = []">Clear sources</button>
               </div>
-              <div class="menu menu-sm mt-2 max-h-56 w-full flex-nowrap overflow-x-hidden overflow-y-auto rounded-box bg-base-100 p-0">
+              <div class="menu menu-sm mt-2 max-h-56 w-full flex-nowrap overflow-x-hidden overflow-y-auto rounded-box bg-base-100 p-0" role="listbox" aria-label="Source filters">
                 <template x-for="item in availableSources()" :key="item.value">
                   <button type="button"
                           class="flex w-full min-w-0 items-center justify-between gap-3 rounded-lg px-2 py-1.5 text-left hover:bg-base-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary"
                           x-bind:aria-pressed="hasSource(item.value)"
+                          x-bind:aria-label="(hasSource(item.value) ? 'Remove source filter ' : 'Add source filter ') + item.label"
                           x-on:click="toggleSource(item.value)">
                     <span class="min-w-0 flex-1 truncate" x-text="item.label"></span>
                     <span class="badge badge-sm shrink-0" x-bind:class="hasSource(item.value) ? 'badge-primary' : 'badge-ghost'" x-text="hasSource(item.value) ? 'Selected' : 'Add'"></span>
@@ -206,12 +209,12 @@
         <div class="flex items-center justify-between gap-2 sm:ml-auto sm:justify-start">
           <span class="text-xs text-base-content/60">Sort by</span>
           <div class="dropdown dropdown-end" x-bind:class="sortPickerOpen ? 'dropdown-open' : 'dropdown-close'" x-on:click.outside="sortPickerOpen = false">
-            <button type="button" class="btn btn-sm gap-1" x-on:click="sortPickerOpen = !sortPickerOpen" x-bind:aria-expanded="sortPickerOpen">
+            <button type="button" class="btn btn-sm gap-1" x-on:click="sortPickerOpen = !sortPickerOpen" x-bind:aria-expanded="sortPickerOpen" aria-haspopup="menu" aria-label="Choose sort order">
               {{icon "lucide:arrow-up-down"}}
               <span x-text="{name: 'A → Z', favorites: 'Pinned first'}[sortMode]"></span>
               {{icon "lucide:chevron-down"}}
             </button>
-            <ul class="dropdown-content menu menu-sm bg-base-100 rounded-box shadow-md mt-2 w-44 z-50">
+            <ul class="dropdown-content menu menu-sm bg-base-100 rounded-box shadow-md mt-2 w-44 z-50" role="menu">
               <li><a x-on:click.prevent="sortMode = 'name'; sortPickerOpen = false" x-bind:class="sortMode === 'name' ? 'menu-active' : ''">A → Z</a></li>
               <li><a x-on:click.prevent="sortMode = 'favorites'; sortPickerOpen = false" x-bind:class="sortMode === 'favorites' ? 'menu-active' : ''">Pinned first</a></li>
             </ul>
@@ -228,7 +231,7 @@
   {{$ids := serviceIDs $groupServices}}
   <section x-show="groupOnPage({{$groupIndex}}) && groupVisible({{$ids}})" x-transition>
     <div class="grid gap-2 border-b border-base-300 pb-2 sm:flex sm:flex-wrap sm:items-center sm:justify-between sm:gap-3">
-      <button type="button" class="flex cursor-pointer items-center gap-2 text-left grow min-w-0 rounded-lg px-2 py-1 -mx-2 hover:bg-base-200 transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary" data-group="{{$groupName}}" x-on:click="toggleGroup($el.dataset.group)" aria-label="Toggle group">
+      <button type="button" class="flex cursor-pointer items-center gap-2 text-left grow min-w-0 rounded-lg px-2 py-1 -mx-2 hover:bg-base-200 transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary" data-group="{{$groupName}}" x-on:click="toggleGroup($el.dataset.group)" aria-label="Toggle {{groupLabel . $.GroupBy $groupServices}} group">
         <span class="transition-transform shrink-0 text-base-content/60" data-group="{{$groupName}}" x-bind:class="groupCollapsed($el.dataset.group) ? '-rotate-90' : ''">{{icon "lucide:chevron-down"}}</span>
         <p class="text-base font-semibold truncate">{{groupLabel . $.GroupBy $groupServices}}</p>
         <span class="badge badge-ghost badge-sm" x-text="filteredGroupIDs({{$ids}}).length"></span>
@@ -259,7 +262,7 @@
               <button class="badge badge-outline badge-sm mt-1 cursor-pointer transition-colors hover:badge-ghost focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary" type="button" data-source="{{.SourceID}}" x-on:click="selectSource($el.dataset.source)" aria-label="Filter by source {{sourceLabel .SourceType .Source}}">{{sourceLabel .SourceType .Source}}</button>
             </div>
             <div class="tooltip" data-service-id="{{.ID}}" x-bind:data-tip="isFavorite($el.dataset.serviceId) ? 'Unpin' : 'Pin'">
-              <button class="btn btn-ghost btn-sm btn-square" type="button" data-service-id="{{.ID}}" x-on:click="toggleFavorite($el.dataset.serviceId)" x-bind:class="isFavorite($el.dataset.serviceId) ? 'text-warning' : 'text-base-content/40'" aria-label="Toggle pinned">
+              <button class="btn btn-ghost btn-sm btn-square" type="button" data-service-id="{{.ID}}" data-service-name="{{.Name}}" x-on:click="toggleFavorite($el.dataset.serviceId)" x-bind:class="isFavorite($el.dataset.serviceId) ? 'text-warning' : 'text-base-content/40'" x-bind:aria-label="(isFavorite($el.dataset.serviceId) ? 'Unpin ' : 'Pin ') + $el.dataset.serviceName">
                 <span data-service-id="{{.ID}}" x-show="isFavorite($el.dataset.serviceId)">{{icon "solar:star-bold"}}</span>
                 <span data-service-id="{{.ID}}" x-show="!isFavorite($el.dataset.serviceId)">{{icon "lucide:star"}}</span>
               </button>
@@ -282,7 +285,7 @@
             <a class="btn btn-primary btn-sm w-full sm:w-auto" href="{{.URL}}" target="_blank" rel="noopener" data-service-id="{{.ID}}" x-on:click="trackRecent($el.dataset.serviceId)">{{icon "lucide:external-link"}}Open</a>
             <a class="btn btn-sm btn-soft w-full sm:w-auto" href="/services/{{.ID}}" data-service-id="{{.ID}}" x-on:click="trackRecent($el.dataset.serviceId)">Details</a>
             <div class="tooltip justify-self-end sm:ml-auto" data-tip="Copy URL">
-              <button class="btn btn-ghost btn-sm btn-square" type="button" data-copy="{{.URL}}" x-on:click="copy($el.dataset.copy)" aria-label="Copy URL">{{icon "lucide:copy"}}</button>
+              <button class="btn btn-ghost btn-sm btn-square" type="button" data-copy="{{.URL}}" x-on:click="copy($el.dataset.copy)" aria-label="Copy {{.Name}} URL">{{icon "lucide:copy"}}</button>
             </div>
           </div>
         </div>
