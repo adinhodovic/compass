@@ -63,7 +63,7 @@ func TestNormalizeUsesCatalogDescriptionFallback(t *testing.T) {
 		"grafana": {Description: "Dashboards."},
 	}}
 
-	service, ok := reg.normalize(
+	service, _, ok := reg.normalize(
 		compass.Service{Name: "Grafana", URL: "https://grafana.local"},
 		"manual",
 		compass.SourceTypeStatic,
@@ -75,7 +75,7 @@ func TestNormalizeUsesCatalogDescriptionFallback(t *testing.T) {
 		t.Fatalf("expected catalog fallback description, got %q", service.Description)
 	}
 
-	service, ok = reg.normalize(
+	service, _, ok = reg.normalize(
 		compass.Service{Name: "Grafana", URL: "https://grafana.local", Description: "Configured."},
 		"manual",
 		compass.SourceTypeStatic,
@@ -91,7 +91,7 @@ func TestNormalizeUsesCatalogDescriptionFallback(t *testing.T) {
 func TestNormalizeFallbackIDIncludesSourceType(t *testing.T) {
 	reg := &Registry{}
 
-	staticService, ok := reg.normalize(
+	staticService, _, ok := reg.normalize(
 		compass.Service{Name: "Grafana", URL: "https://grafana.local"},
 		"local",
 		compass.SourceTypeStatic,
@@ -99,7 +99,7 @@ func TestNormalizeFallbackIDIncludesSourceType(t *testing.T) {
 	if !ok {
 		t.Fatal("expected static service to normalize")
 	}
-	dockerService, ok := reg.normalize(
+	dockerService, _, ok := reg.normalize(
 		compass.Service{Name: "Grafana", URL: "https://grafana.local"},
 		"local",
 		compass.SourceTypeDocker,
@@ -178,6 +178,104 @@ func TestApplyFiltersExcludeWildcardHosts(t *testing.T) {
 	}
 }
 
+func TestApplyFiltersReportsDroppedReasons(t *testing.T) {
+	services := []compass.Service{
+		{
+			Name:       "Wildcard",
+			URL:        "https://*.example.com",
+			Source:     "manual",
+			SourceType: compass.SourceTypeStatic,
+		},
+		{
+			Name:       "Blocked",
+			URL:        "https://blocked.example.com",
+			Source:     "manual",
+			SourceType: compass.SourceTypeStatic,
+		},
+		{
+			Name:       "Apex",
+			URL:        "https://example.org",
+			Source:     "manual",
+			SourceType: compass.SourceTypeStatic,
+		},
+		{
+			Name:       "WWW",
+			URL:        "https://www.example.org",
+			Source:     "manual",
+			SourceType: compass.SourceTypeStatic,
+		},
+	}
+
+	got, dropped := applyFiltersWithDropped(services, Filters{
+		ExcludeWildcardHosts: true,
+		ExcludeURLPatterns:   []string{"blocked.example.com"},
+		DedupeWWW:            true,
+	})
+
+	if len(got) != 1 || got[0].Name != "Apex" {
+		t.Fatalf("expected only Apex to remain, got %#v", got)
+	}
+	want := map[string]string{
+		"Wildcard": "wildcard host excluded",
+		"Blocked":  "URL host excluded by pattern",
+		"WWW":      "duplicate www host",
+	}
+	if len(dropped) != len(want) {
+		t.Fatalf("expected %d dropped services, got %#v", len(want), dropped)
+	}
+	for _, drop := range dropped {
+		if want[drop.Name] != drop.Reason {
+			t.Fatalf("unexpected drop record: %#v", drop)
+		}
+		if drop.SourceID() != "static/manual" {
+			t.Fatalf("expected source ID static/manual, got %q", drop.SourceID())
+		}
+	}
+}
+
+func TestRegistryDroppedServicesIncludesNormalizationAndFilters(t *testing.T) {
+	entries := []source.Entry{{Source: quickSource{name: "manual", services: []compass.Service{
+		{Name: "", URL: "https://unnamed.local"},
+		{Name: "Broken", URL: "://bad"},
+		{Name: "Wildcard", URL: "https://*.example.com"},
+		{Name: "Concrete", URL: "https://api.example.com"},
+	}}}}
+	reg := NewFromEntries(
+		entries,
+		nil,
+		nil,
+		WithLoadTimeout(time.Second),
+		WithFilters(Filters{ExcludeWildcardHosts: true}),
+	)
+
+	loaded, err := reg.Load(context.Background())
+	if err != nil {
+		t.Fatalf("load: %v", err)
+	}
+	if len(loaded) != 1 || loaded[0].Name != "Concrete" {
+		t.Fatalf("expected only Concrete to load, got %#v", loaded)
+	}
+	dropped := reg.DroppedServices()
+	want := map[string]string{
+		"":         "missing name",
+		"Broken":   "invalid URL",
+		"Wildcard": "wildcard host excluded",
+	}
+	if len(dropped) != len(want) {
+		t.Fatalf("expected %d dropped services, got %#v", len(want), dropped)
+	}
+	for _, drop := range dropped {
+		if want[drop.Name] != drop.Reason {
+			t.Fatalf("unexpected drop record: %#v", drop)
+		}
+	}
+
+	dropped[0].Reason = "mutated"
+	if reg.DroppedServices()[0].Reason == "mutated" {
+		t.Fatal("DroppedServices did not return a copy")
+	}
+}
+
 func TestNormalizeUsesCatalogIconAndTagsFallback(t *testing.T) {
 	reg := &Registry{catalog: catalog.DB{
 		"grafana": {
@@ -187,7 +285,7 @@ func TestNormalizeUsesCatalogIconAndTagsFallback(t *testing.T) {
 		},
 	}}
 
-	service, ok := reg.normalize(
+	service, _, ok := reg.normalize(
 		compass.Service{Name: "Grafana", URL: "https://grafana.local"},
 		"manual",
 		compass.SourceTypeStatic,
@@ -208,7 +306,7 @@ func TestNormalizeUsesCatalogIconAndTagsFallback(t *testing.T) {
 		t.Fatalf("expected catalog primary tag first, got %v", service.Tags)
 	}
 
-	service, ok = reg.normalize(
+	service, _, ok = reg.normalize(
 		compass.Service{
 			Name: "Grafana",
 			URL:  "https://grafana.local",
@@ -232,7 +330,7 @@ func TestNormalizeUsesCatalogIconAndTagsFallback(t *testing.T) {
 func TestNormalizePrimaryTag(t *testing.T) {
 	reg := &Registry{}
 
-	service, ok := reg.normalize(
+	service, _, ok := reg.normalize(
 		compass.Service{
 			Name:       "Grafana",
 			URL:        "https://grafana.local",
@@ -252,7 +350,7 @@ func TestNormalizePrimaryTag(t *testing.T) {
 		t.Fatalf("expected primary tag first, got %#v", service.Tags)
 	}
 
-	service, ok = reg.normalize(
+	service, _, ok = reg.normalize(
 		compass.Service{
 			Name:       "Docs",
 			URL:        "https://docs.local",
@@ -273,7 +371,7 @@ func TestNormalizePrimaryTag(t *testing.T) {
 func TestNormalizeExpandsPanelServicePlaceholders(t *testing.T) {
 	reg := &Registry{}
 
-	service, ok := reg.normalize(
+	service, _, ok := reg.normalize(
 		compass.Service{
 			Name: "Grafana API",
 			URL:  "https://grafana.local",

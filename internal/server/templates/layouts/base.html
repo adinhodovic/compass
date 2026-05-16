@@ -119,17 +119,17 @@
     <div class="modal-box max-w-[52rem] px-3 sm:px-4 pt-0 pb-3 sm:pb-4 w-[calc(100vw-1rem)] max-h-[80vh] overflow-y-auto">
       <div class="sticky top-0 z-10 bg-base-100 -mx-3 sm:-mx-4 px-3 sm:px-4 pt-3 sm:pt-4 pb-3">
         <span id="command-palette-label" class="sr-only">Command palette</span>
-        <label class="input w-full">
+        <label class="input w-full" for="command-search">
           <span class="sr-only">Search services and pages</span>
           {{icon "lucide:search"}}
-          <input x-ref="commandInput" type="search" class="grow" placeholder="Search services and pages" aria-label="Search services and pages" x-model="query"
+          <input id="command-search" x-ref="commandInput" type="search" class="grow" placeholder="Search services and pages" aria-label="Search services and pages" x-model="query"
             x-on:keydown.arrow-down.prevent="move(1)"
             x-on:keydown.arrow-up.prevent="move(-1)"
             x-on:keydown.enter.prevent="commit()">
           <kbd class="kbd kbd-sm">esc</kbd>
         </label>
       </div>
-      <ul class="menu w-full flex-nowrap">
+      <ul class="menu w-full flex-nowrap" aria-live="polite">
         <template x-for="group in groupedResults()" :key="group.title">
           <li>
             <span class="menu-title" x-text="group.title"></span>

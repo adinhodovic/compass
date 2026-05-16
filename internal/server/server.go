@@ -34,6 +34,7 @@ var staticFS embed.FS
 type ServiceProvider interface {
 	Services() []compass.Service
 	SourceStatuses() []registry.SourceStatus
+	DroppedServices() []registry.DroppedService
 }
 
 type Server struct {
@@ -130,8 +131,10 @@ type pageData struct {
 
 type debugData struct {
 	Base
-	Statuses []registry.SourceStatus
-	Groups   map[string][]compass.Service // keyed by source name
+	Statuses      []registry.SourceStatus
+	Groups        map[string][]compass.Service // keyed by source name
+	Dropped       []registry.DroppedService
+	DroppedGroups map[string][]registry.DroppedService
 }
 
 func New(
@@ -414,11 +417,22 @@ func (s Server) debug(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	base := s.baseData(r)
+	dropped := s.provider.DroppedServices()
 	s.render(w, "debug", debugData{
-		Base:     base,
-		Statuses: s.provider.SourceStatuses(),
-		Groups:   registry.Group(base.Services, compass.GroupBySource),
+		Base:          base,
+		Statuses:      s.provider.SourceStatuses(),
+		Groups:        registry.Group(base.Services, compass.GroupBySource),
+		Dropped:       dropped,
+		DroppedGroups: groupDroppedServices(dropped),
 	})
+}
+
+func groupDroppedServices(services []registry.DroppedService) map[string][]registry.DroppedService {
+	groups := make(map[string][]registry.DroppedService)
+	for _, service := range services {
+		groups[service.SourceID()] = append(groups[service.SourceID()], service)
+	}
+	return groups
 }
 
 // manifest serves a PWA web app manifest derived from the organization

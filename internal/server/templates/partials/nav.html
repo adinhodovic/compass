@@ -32,7 +32,7 @@
         {{range .HeaderLinks}}
         {{if .Links}}
         <div class="dropdown dropdown-end">
-          <button type="button" class="btn btn-ghost btn-sm gap-2">
+          <button type="button" class="btn btn-ghost btn-sm gap-2" aria-haspopup="menu">
             {{if .Icon}}
               {{$linkLogo := logo .Icon .Label "link"}}
               {{if eq $linkLogo.Kind "image"}}
@@ -44,7 +44,7 @@
             <span>{{.Label}}</span>
             {{icon "lucide:chevron-down"}}
           </button>
-          <ul tabindex="0" class="dropdown-content menu bg-base-100 rounded-box shadow-md mt-2 w-60 z-50">
+          <ul tabindex="0" class="dropdown-content menu bg-base-100 rounded-box shadow-md mt-2 w-60 z-50" role="menu">
             {{range .Links}}
             <li>
               <a href="{{.URL}}"{{if .OpensInNewTab}} target="_blank" rel="noopener"{{end}}>
@@ -90,12 +90,12 @@
           {{end}}
         {{else}}
           <div class="dropdown dropdown-end">
-            <button type="button" class="btn btn-ghost btn-sm gap-2">
+            <button type="button" class="btn btn-ghost btn-sm gap-2" aria-haspopup="menu">
               {{icon "lucide:book-open"}}
               <span>{{.Title}}</span>
               {{icon "lucide:chevron-down"}}
             </button>
-            <ul tabindex="0" class="dropdown-content menu bg-base-100 rounded-box shadow-md mt-2 w-56 z-50">
+            <ul tabindex="0" class="dropdown-content menu bg-base-100 rounded-box shadow-md mt-2 w-56 z-50" role="menu">
               {{range .Pages}}<li><a href="{{.URL}}">{{.Title}}</a></li>{{end}}
             </ul>
           </div>
@@ -124,7 +124,7 @@
         {{if .DebugEnabled}}
         <a class="btn btn-ghost btn-sm btn-square hidden md:inline-flex relative" href="/debug" aria-label="Debug">
           {{icon "lucide:bug"}}
-          {{if .HasSourceErrors}}<span class="absolute top-1 right-1 size-2 rounded-full bg-error" aria-label="Source errors"></span>{{end}}
+          {{if .HasSourceErrors}}<span class="absolute top-1 right-1 size-2 rounded-full bg-error" aria-hidden="true"></span><span class="sr-only">Source errors</span>{{end}}
         </a>
         {{end}}
         <button class="btn btn-ghost btn-sm md:hidden" type="button" x-on:click="window.dispatchEvent(new CustomEvent('open-command'))" aria-label="Open command palette">
@@ -138,11 +138,11 @@
         </div>
         {{if .User.LoggedIn}}
         <div class="dropdown dropdown-end hidden md:block">
-          <button tabindex="0" class="btn btn-ghost btn-sm btn-square relative" type="button" aria-label="User menu">
+          <button tabindex="0" class="btn btn-ghost btn-sm btn-square relative" type="button" aria-label="User menu" aria-haspopup="menu">
             {{icon "lucide:circle-user-round"}}
-            <span class="absolute bottom-1 right-1 size-2 rounded-full border border-base-200 bg-success"></span>
+            <span class="absolute bottom-1 right-1 size-2 rounded-full border border-base-200 bg-success" aria-hidden="true"></span>
           </button>
-          <div tabindex="0" class="dropdown-content z-50 mt-3 w-64 overflow-hidden rounded-box border border-base-300 bg-base-100 shadow-md">
+          <div tabindex="0" class="dropdown-content z-50 mt-3 w-64 overflow-hidden rounded-box border border-base-300 bg-base-100 shadow-md" role="menu">
             <div class="px-4 py-3">
               <p class="text-xs uppercase tracking-wide text-base-content/60">Signed in</p>
               <p class="mt-1 font-semibold truncate">{{if .User.Name}}{{.User.Name}}{{else}}{{.User.Email}}{{end}}</p>
@@ -158,10 +158,10 @@
         </div>
         {{end}}
         <div class="dropdown dropdown-end md:hidden" x-on:click.outside="closeMobileMenu()" x-on:keydown.escape.window="closeMobileMenu()">
-          <button class="btn btn-ghost btn-sm btn-square" type="button" x-on:click="toggleMobileMenu()" x-bind:aria-expanded="mobileMenuOpen" aria-label="Open navigation menu">
+          <button class="btn btn-ghost btn-sm btn-square" type="button" x-on:click="toggleMobileMenu()" x-bind:aria-expanded="mobileMenuOpen" aria-controls="mobile-navigation" aria-label="Open navigation menu">
             {{icon "lucide:menu"}}
           </button>
-          <ul class="dropdown-content menu bg-base-100 rounded-box shadow-md mt-2 w-64 z-50" x-show="mobileMenuOpen" x-transition x-cloak>
+          <ul id="mobile-navigation" class="dropdown-content menu bg-base-100 rounded-box shadow-md mt-2 max-h-[calc(100vh-5rem)] w-[min(18rem,calc(100vw-1rem))] overflow-y-auto z-50" x-show="mobileMenuOpen" x-transition x-cloak>
             {{if .User.LoggedIn}}
             <li class="px-2 pt-2 pb-1">
               <div class="block">
