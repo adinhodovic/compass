@@ -43,6 +43,17 @@ services:
           metadata:
             environment: dev
             owner: platform
+          links:
+            - label: Health
+              url: http://localhost:3000/api/health
+              icon: lucide:heart-pulse
+            - label: Dashboard JSON
+              url: http://localhost:3000/api/dashboards/uid/golden-signals
+              icon: lucide:braces
+            - label: Runbook
+              url: /pages/on-call/runbook
+              icon: lucide:book-open
+              new_tab: false
           panels:
             - title: Golden Signals Traffic
               url: http://localhost:3000/d-solo/golden-signals/the-four-golden-signals?orgId=1&from=now-6h&to=now&timezone=browser&panelId=2
@@ -51,6 +62,11 @@ services:
           tags: [docs]
           description: Markdown wiki with runbooks and on-call rotations.
           icon: lucide:book-open
+          links:
+            - label: Runbook
+              url: /pages/on-call/runbook
+              icon: lucide:book-open
+              new_tab: false
         - name: Pi-hole
           url: http://localhost:8082/admin
           tags: [network, dns, compass, backend, ingress, egress, pi, homelab, full-example]

@@ -381,6 +381,7 @@ func serviceFromRoute(
 		Description: annotations[meta.AnnotationDescription],
 		Icon:        annotations[meta.AnnotationIcon],
 		Metadata:    metadata,
+		Links:       meta.LinksFromAnnotations(annotations),
 		Panels:      meta.PanelsFromAnnotations(annotations),
 	}
 }

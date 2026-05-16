@@ -630,8 +630,30 @@ func (r *Registry) normalize(
 	if service.PrimaryTag == "" && len(service.Tags) > 0 {
 		service.PrimaryTag = service.Tags[0]
 	}
+	service.Links = validLinks(service.Links)
 	service.Panels = validPanels(service.Panels, service)
 	return service, DroppedService{}, true
+}
+
+func validLinks(links []compass.Link) []compass.Link {
+	if len(links) == 0 {
+		return nil
+	}
+	out := make([]compass.Link, 0, len(links))
+	for _, link := range links {
+		link.Label = strings.TrimSpace(link.Label)
+		if link.Label == "" {
+			link.Label = strings.TrimSpace(link.URL)
+		}
+		linkURL, ok := meta.ValidLinkURL(link.URL)
+		if link.Label == "" || !ok {
+			continue
+		}
+		link.URL = linkURL
+		link.Icon = strings.TrimSpace(link.Icon)
+		out = append(out, link)
+	}
+	return out
 }
 
 func normalizePrimaryTag(primary string, tags []string) []string {

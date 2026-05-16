@@ -17,6 +17,7 @@ const (
 	AnnotationName          = AnnotationPrefix + "name"
 	AnnotationPrimaryTag    = AnnotationPrefix + "primary-tag"
 	AnnotationURLs          = AnnotationPrefix + "urls"
+	AnnotationLinks         = AnnotationPrefix + "links"
 	AnnotationGrafanaPanels = AnnotationPrefix + "grafana-panels"
 	LabelEnabled            = AnnotationPrefix + "enabled"
 )
@@ -114,6 +115,17 @@ func ValidHTTPURL(raw string) (string, bool) {
 		return "", false
 	}
 	return u.String(), true
+}
+
+func ValidLinkURL(raw string) (string, bool) {
+	raw = strings.TrimSpace(raw)
+	if raw == "" || strings.HasPrefix(raw, "//") {
+		return "", false
+	}
+	if strings.HasPrefix(raw, "/") {
+		return raw, true
+	}
+	return ValidHTTPURL(raw)
 }
 
 // MergeTags returns base ++ extra with whitespace trimmed, blanks dropped,
@@ -247,4 +259,35 @@ func PanelsFromAnnotations(annotations map[string]string) []compass.Panel {
 	}
 
 	return panels
+}
+
+// LinksFromAnnotations parses compass.adinhodovic.com/links entries.
+// Format: [icon|]Label=URL,[icon|]Label=URL. URLs may be http(s) or
+// root-relative paths.
+func LinksFromAnnotations(annotations map[string]string) []compass.Link {
+	if annotations[AnnotationLinks] == "" {
+		return nil
+	}
+
+	entries := strings.Split(annotations[AnnotationLinks], ",")
+	links := make([]compass.Link, 0, len(entries))
+	for _, entry := range entries {
+		label, linkURL, ok := strings.Cut(strings.TrimSpace(entry), "=")
+		if !ok || label == "" || linkURL == "" {
+			continue
+		}
+		icon := ""
+		if left, right, ok := strings.Cut(label, "|"); ok {
+			icon = strings.TrimSpace(left)
+			label = right
+		}
+		label = strings.TrimSpace(label)
+		linkURL, ok = ValidLinkURL(linkURL)
+		if label == "" || !ok {
+			continue
+		}
+		links = append(links, compass.Link{Label: label, URL: linkURL, Icon: icon})
+	}
+
+	return links
 }

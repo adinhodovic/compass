@@ -47,6 +47,7 @@ func TestDockerLoadFiltersByEnabledLabel(t *testing.T) {
 			meta.AnnotationName:       "Grafana",
 			meta.AnnotationPrimaryTag: "monitoring",
 			meta.AnnotationTags:       "core,monitoring",
+			meta.AnnotationLinks:      "lucide:heart-pulse|Health=https://grafana.local/api/health,Runbook=/pages/on-call/grafana",
 		}},
 		{ID: "b", Names: []string{"/redis"}, Labels: map[string]string{
 			meta.AnnotationURLs: "https://redis.local",
@@ -70,6 +71,10 @@ func TestDockerLoadFiltersByEnabledLabel(t *testing.T) {
 	}
 	if services[0].PrimaryTag != "monitoring" {
 		t.Fatalf("expected primary tag from label, got %q", services[0].PrimaryTag)
+	}
+	if len(services[0].Links) != 2 || services[0].Links[0].Label != "Health" ||
+		services[0].Links[1].URL != "/pages/on-call/grafana" {
+		t.Fatalf("unexpected links from label: %#v", services[0].Links)
 	}
 }
 

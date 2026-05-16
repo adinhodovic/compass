@@ -44,6 +44,11 @@ func TestServerRendersHomeAndDetail(t *testing.T) {
 		Tags:        []string{"monitoring"},
 		Description: "Dashboards",
 		Metadata:    map[string]any{"dashboard": "https://grafana.local"},
+		Links: []compass.Link{{
+			Label: "Health",
+			URL:   "https://grafana.local/api/health",
+			Icon:  "lucide:heart-pulse",
+		}},
 		Panels: []compass.Panel{{
 			Title: "Cluster CPU",
 			URL:   "https://grafana.local/d-solo/cluster/cpu?panelId=1",
@@ -64,6 +69,8 @@ func TestServerRendersHomeAndDetail(t *testing.T) {
 			for _, want := range []string{
 				`title="Cluster CPU"`,
 				`src="https://grafana.local/d-solo/cluster/cpu?panelId=1"`,
+				`href="https://grafana.local/api/health" target="_blank" rel="noopener"`,
+				`Health`,
 				`aria-label="Copy Dashboard value"`,
 				`<meta property="og:title" content="Grafana">`,
 				`<meta property="og:description" content="Dashboards">`,

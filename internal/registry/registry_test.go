@@ -397,6 +397,41 @@ func TestNormalizeExpandsPanelServicePlaceholders(t *testing.T) {
 	}
 }
 
+func TestNormalizeValidatesServiceLinks(t *testing.T) {
+	reg := &Registry{}
+	openInline := false
+
+	service, _, ok := reg.normalize(
+		compass.Service{
+			Name: "Grafana",
+			URL:  "https://grafana.local",
+			Links: []compass.Link{
+				{
+					Label: "Health",
+					URL:   "https://grafana.local/api/health",
+					Icon:  "lucide:heart-pulse",
+				},
+				{Label: "Runbook", URL: "/pages/on-call/grafana", NewTab: &openInline},
+				{Label: "Bad", URL: "ftp://grafana.local"},
+			},
+		},
+		"manual",
+		compass.SourceTypeStatic,
+	)
+	if !ok {
+		t.Fatal("expected service to normalize")
+	}
+	if len(service.Links) != 2 {
+		t.Fatalf("expected two valid links, got %#v", service.Links)
+	}
+	if !service.Links[0].OpensInNewTab() {
+		t.Fatalf("expected service links to open in a new tab by default")
+	}
+	if service.Links[1].OpensInNewTab() {
+		t.Fatalf("expected explicit new_tab=false to be honored")
+	}
+}
+
 // hangingSource blocks Load until ctx is cancelled — used to verify the
 // per-refresh timeout actually fires.
 type hangingSource struct{ name string }
@@ -460,13 +495,18 @@ func TestRegistryLoadTimeoutAllowsNormalLoad(t *testing.T) {
 }
 
 func TestRegistryServicesReturnsDeepCopy(t *testing.T) {
-	services := []compass.Service{{
-		Name:     "Grafana",
-		URL:      "https://grafana.local",
-		Tags:     []string{"monitoring"},
-		Panels:   []compass.Panel{{Title: "CPU", URL: "https://grafana.local/panel"}},
-		Metadata: map[string]any{"nested": map[string]any{"key": "value"}},
-	}}
+	services := []compass.Service{
+		{
+			Name: "Grafana",
+			URL:  "https://grafana.local",
+			Tags: []string{"monitoring"},
+			Links: []compass.Link{
+				{Label: "Health", URL: "https://grafana.local/api/health", NewTab: boolPtr(false)},
+			},
+			Panels:   []compass.Panel{{Title: "CPU", URL: "https://grafana.local/panel"}},
+			Metadata: map[string]any{"nested": map[string]any{"key": "value"}},
+		},
+	}
 	entries := []source.Entry{{Source: quickSource{name: "ok", services: services}}}
 	reg := NewFromEntries(entries, nil, nil, WithLoadTimeout(time.Second))
 
@@ -475,12 +515,17 @@ func TestRegistryServicesReturnsDeepCopy(t *testing.T) {
 	}
 	first := reg.Services()
 	first[0].Tags[0] = "mutated"
+	first[0].Links[0].Label = "mutated"
+	*first[0].Links[0].NewTab = true
 	first[0].Panels[0].Title = "mutated"
 	first[0].Metadata["nested"].(map[string]any)["key"] = "mutated"
 
 	second := reg.Services()
 	if second[0].Tags[0] != "monitoring" {
 		t.Fatalf("tags were not deep-copied: %#v", second[0].Tags)
+	}
+	if second[0].Links[0].Label != "Health" || second[0].Links[0].OpensInNewTab() {
+		t.Fatalf("links were not deep-copied: %#v", second[0].Links)
 	}
 	if second[0].Panels[0].Title != "CPU" {
 		t.Fatalf("panels were not deep-copied: %#v", second[0].Panels)
@@ -489,6 +534,8 @@ func TestRegistryServicesReturnsDeepCopy(t *testing.T) {
 		t.Fatalf("metadata was not deep-copied: %#v", second[0].Metadata)
 	}
 }
+
+func boolPtr(v bool) *bool { return &v }
 
 func TestRegistryCloseClosesSources(t *testing.T) {
 	closed := false
