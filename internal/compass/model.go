@@ -23,7 +23,22 @@ type Service struct {
 	Description string         `json:"description" yaml:"description"`
 	Icon        string         `json:"icon"        yaml:"icon"`
 	Metadata    map[string]any `json:"metadata"    yaml:"metadata"`
+	Links       []Link         `json:"links"       yaml:"links"`
 	Panels      []Panel        `json:"panels"      yaml:"panels"`
+}
+
+type Link struct {
+	Label  string `json:"label"   yaml:"label"`
+	URL    string `json:"url"     yaml:"url"`
+	Icon   string `json:"icon"    yaml:"icon"`
+	NewTab *bool  `json:"new_tab" yaml:"new_tab"`
+}
+
+func (l Link) OpensInNewTab() bool {
+	if l.NewTab != nil {
+		return *l.NewTab
+	}
+	return true
 }
 
 type Panel struct {
@@ -41,6 +56,13 @@ func (s Service) SourceID() string {
 
 func CloneService(service Service) Service {
 	service.Tags = append([]string(nil), service.Tags...)
+	service.Links = append([]Link(nil), service.Links...)
+	for i := range service.Links {
+		if service.Links[i].NewTab != nil {
+			newTab := *service.Links[i].NewTab
+			service.Links[i].NewTab = &newTab
+		}
+	}
 	service.Panels = append([]Panel(nil), service.Panels...)
 	if service.Metadata != nil {
 		service.Metadata = cloneMetadata(service.Metadata)

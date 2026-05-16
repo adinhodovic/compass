@@ -23,6 +23,7 @@ services:
       compass.adinhodovic.com/urls: "http://localhost:8081"
       compass.adinhodovic.com/tags: "proxy,web"
       compass.adinhodovic.com/icon: "simple-icons:caddy"
+      compass.adinhodovic.com/links: "lucide:heart-pulse|Admin API=http://localhost:2019/config/,lucide:book-open|Runbook=/pages/on-call/runbook"
     healthcheck:
       test: ["CMD-SHELL", "wget -q -O- http://localhost:2019/config/ >/dev/null"]
       interval: 5s
@@ -99,6 +100,7 @@ services:
       compass.adinhodovic.com/urls: "http://localhost:3000"
       compass.adinhodovic.com/tags: "monitoring,observability"
       compass.adinhodovic.com/icon: "selfhst:grafana"
+      compass.adinhodovic.com/links: "lucide:heart-pulse|Health=http://localhost:3000/api/health,lucide:braces|Dashboard JSON=http://localhost:3000/api/dashboards/uid/golden-signals,lucide:book-open|Runbook=/pages/on-call/runbook"
       compass.adinhodovic.com/grafana-panels: "Golden Signals Traffic=http://localhost:3000/d-solo/golden-signals/the-four-golden-signals?orgId=1&from=now-6h&to=now&timezone=browser&panelId=2"
     healthcheck:
       test: ["CMD-SHELL", "wget -q -O- http://localhost:3000/api/health >/dev/null"]

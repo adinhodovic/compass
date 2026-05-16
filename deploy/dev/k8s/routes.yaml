@@ -11,6 +11,7 @@ metadata:
     compass.adinhodovic.com/description: "GitOps continuous delivery for Kubernetes."
     compass.adinhodovic.com/icon: "simple-icons:argo"
     compass.adinhodovic.com/tags: "kubernetes,gitops,gateway-api"
+    compass.adinhodovic.com/links: "lucide:book-open|Runbook=/pages/on-call/runbook,lucide:git-branch|Project=https://github.com/argoproj/argo-cd"
 spec:
   parentRefs:
     - name: dev-gateway
@@ -30,6 +31,7 @@ metadata:
     compass.adinhodovic.com/description: "Cluster-scoped metrics + PromQL."
     compass.adinhodovic.com/icon: "simple-icons:prometheus"
     compass.adinhodovic.com/tags: "kubernetes,monitoring,gateway-api"
+    compass.adinhodovic.com/links: "lucide:heart-pulse|Targets=http://prometheus.k8s.dev.local/targets,lucide:book-open|Runbook=/pages/on-call/runbook"
 spec:
   parentRefs:
     - name: dev-gateway

@@ -198,6 +198,40 @@ services:
 	}
 }
 
+func TestLoadAcceptsServiceLinks(t *testing.T) {
+	path := writeConfig(t, `
+organization:
+  name: Compass
+services:
+  sources:
+    - type: static
+      name: manual
+      services:
+        - name: Grafana
+          url: https://grafana.local
+          links:
+            - label: Health
+              url: https://grafana.local/api/health
+              icon: lucide:heart-pulse
+            - label: Runbook
+              url: /pages/on-call/grafana
+              icon: lucide:book-open
+              new_tab: false
+`)
+
+	cfg, err := Load(path)
+	if err != nil {
+		t.Fatalf("load: %v", err)
+	}
+	links := cfg.Services.Sources[0].Services[0].Links
+	if len(links) != 2 || links[0].Label != "Health" || !links[0].OpensInNewTab() {
+		t.Fatalf("unexpected service links: %#v", links)
+	}
+	if links[1].OpensInNewTab() {
+		t.Fatalf("expected new_tab=false to be honored: %#v", links[1])
+	}
+}
+
 func TestLoadAcceptsOrganizationFullLogo(t *testing.T) {
 	path := writeConfig(t, `
 organization:

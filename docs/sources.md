@@ -23,6 +23,7 @@ differ per source.
 | `icon`           | Logo                                            | `compass.adinhodovic.com/icon`            | `icon`          | `icon`                    |
 | `primary_tag`    | Main tag for grouping and card emphasis         | `compass.adinhodovic.com/primary-tag`     | `primary_tag`   | `primary_tag`             |
 | `tags`           | Free-form tags                                  | `compass.adinhodovic.com/tags` (csv)      | `tags`          | `tags`                    |
+| `links`          | Extra service actions (health, repo, runbook)   | `compass.adinhodovic.com/links`           | n/a             | `links:`                  |
 | `enabled`        | Discovery gate (`true`/`false`)                 | `compass.adinhodovic.com/enabled` (label) | n/a             | n/a                       |
 | `grafana-panels` | Grafana iframes; `Title=URL,Title=URL`          | `compass.adinhodovic.com/grafana-panels`  | n/a             | use `panels:` field       |
 
@@ -103,6 +104,53 @@ the detail page. URLs in the metadata table auto-render as links.
 
 Sensitive identifiers such as API keys, bearer tokens, Tailscale machine
 keys, and Headscale node/machine keys are not rendered as metadata.
+
+#### Links
+
+Links are extra service actions shown on the service detail page. Use them
+for health endpoints, metrics pages, source repositories, runbooks, or other
+operator shortcuts. Compass only renders the links; it does not probe them.
+
+Static services use the native `links:` field:
+
+```yaml
+services:
+  sources:
+    - type: static
+      name: manual
+      services:
+        - name: Grafana
+          url: https://grafana.example.com
+          links:
+            - label: Health
+              url: https://grafana.example.com/api/health
+              icon: lucide:heart-pulse
+            - label: Repo
+              url: https://github.com/grafana/grafana
+              icon: simple-icons:github
+            - label: Runbook
+              url: /pages/on-call/grafana
+              icon: lucide:book-open
+              new_tab: false
+```
+
+Docker and Kubernetes use the `links` annotation/label:
+
+```yaml
+compass.adinhodovic.com/links: "lucide:heart-pulse|Health=https://grafana.example.com/api/health,lucide:book-open|Runbook=/pages/on-call/grafana"
+```
+
+Annotation entries are comma-separated and use this format:
+
+| Form               | Example                                |
+| ------------------ | -------------------------------------- |
+| `Label=URL`        | `Runbook=/pages/on-call/grafana`       |
+| `icon|Label=URL`   | `lucide:heart-pulse|Health=https://…`  |
+
+Link URLs may be absolute `http(s)` URLs or root-relative site paths such
+as `/pages/on-call/grafana`. Service links open in a new tab by default,
+including root-relative links. Set `new_tab: false` on static links when
+you want an in-app navigation. Annotation links always use the default.
 
 #### Panels
 

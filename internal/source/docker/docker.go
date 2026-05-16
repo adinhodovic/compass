@@ -163,6 +163,7 @@ func (s Source) toService(
 			"compose_project": labels[composeProjectLabel],
 			"compose_service": labels[composeServiceLabel],
 		},
+		Links:  meta.LinksFromAnnotations(labels),
 		Panels: meta.PanelsFromAnnotations(labels),
 	}
 }

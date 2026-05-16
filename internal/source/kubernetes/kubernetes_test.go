@@ -41,6 +41,7 @@ func TestKubernetesLoadsDefaultHTTPRoute(t *testing.T) {
 						meta.AnnotationTags:          "core,monitoring",
 						meta.AnnotationPrimaryTag:    "monitoring",
 						meta.AnnotationDescription:   "Dashboards",
+						meta.AnnotationLinks:         "lucide:heart-pulse|Health=https://grafana.local/api/health,Runbook=/pages/on-call/grafana",
 						meta.AnnotationGrafanaPanels: "CPU=https://grafana.local/d-solo/cpu",
 					},
 				},
@@ -72,6 +73,10 @@ func TestKubernetesLoadsDefaultHTTPRoute(t *testing.T) {
 	}
 	if len(service.Panels) != 1 || service.Panels[0].Title != "CPU" {
 		t.Fatalf("unexpected panels: %#v", service.Panels)
+	}
+	if len(service.Links) != 2 || service.Links[0].Icon != "lucide:heart-pulse" ||
+		service.Links[1].URL != "/pages/on-call/grafana" {
+		t.Fatalf("unexpected links: %#v", service.Links)
 	}
 }
 
