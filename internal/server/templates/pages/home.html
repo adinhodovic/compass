@@ -25,7 +25,7 @@
         <div class="flex flex-wrap gap-2">
           <template x-for="service in favoriteServices().slice(0, 6)" :key="service.id">
             <span class="group flex max-w-full items-center gap-1 rounded-lg bg-base-200 px-2 py-1.5 text-sm transition-colors hover:bg-base-300">
-              <a class="flex min-w-0 items-center gap-2" :href="'/services/' + service.id" x-on:click="trackRecent(service.id)">
+              <a class="flex min-w-0 items-center gap-2" :href="service.url" target="_blank" rel="noopener" x-on:click="trackRecent(service.id)">
                 <template x-if="service.iconURL">
                   <span class="avatar"><span class="w-5 rounded"><img :src="service.iconURL" :alt="service.name + ' logo'" class="object-contain" loading="lazy"></span></span>
                 </template>
@@ -59,7 +59,7 @@
         <div class="flex flex-wrap gap-2">
           <template x-for="service in recentServices().slice(0, 6)" :key="service.id">
             <a class="flex max-w-full items-center gap-2 rounded-lg px-2 py-1.5 text-sm text-base-content/80 transition-colors hover:bg-base-200"
-               :href="'/services/' + service.id">
+               :href="service.url" target="_blank" rel="noopener" x-on:click="trackRecent(service.id)">
               <template x-if="service.iconURL">
                 <span class="avatar"><span class="w-5 rounded"><img :src="service.iconURL" :alt="service.name + ' logo'" class="object-contain" loading="lazy"></span></span>
               </template>
