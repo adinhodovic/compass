@@ -5,11 +5,11 @@ type: application
 
 # Chart version. Bump on every chart change (templates, defaults, schema).
 # Follows SemVer.
-version: 0.2.1
+version: 0.3.0
 
 # Application version — should track Compass binary release this chart
 # was tested against.
-appVersion: "0.2.1"
+appVersion: "0.3.0"
 
 home: https://github.com/adinhodovic/compass
 icon: https://raw.githubusercontent.com/adinhodovic/compass/main/docs/assets/images/compass-logo-square.png
