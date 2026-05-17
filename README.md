@@ -24,7 +24,7 @@ Add a source and Compass renders what is exposed in a server-driven UI with sour
 
 - Docker, Kubernetes, Tailscale, Headscale, static config, and JSON API sources.
 - Source health, refresh status, service metadata, panels, tags, and debug views.
-- Server-rendered HTML with HTMX, Alpine.js, Tailwind, and daisyUI. No SPA runtime.
+- Server-rendered HTML with HTMX, Alpine.js, Tailwind, and daisyUI.
 
 ## Quick start
 

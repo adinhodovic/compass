@@ -20,6 +20,10 @@ auth:
 catalog:
   path: catalog
 
+# Local assets served under /assets/* for exercising mounted icon files.
+assets:
+  dir: assets
+
 # Markdown pages. Each *.md becomes /pages/{slug}.
 pages:
   dir: pages

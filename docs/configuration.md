@@ -19,6 +19,9 @@ ui:
 catalog:
   path: catalog/            # directory of *.yaml / *.yml override files
 
+assets:
+  dir: /etc/compass/assets   # optional mounted static asset directory
+
 pages:
   dir: pages                # optional markdown pages directory
 
@@ -76,6 +79,37 @@ silently passes through as a literal value.
 
 Compass ships only light and dark themes. Pick one primary color; the
 rest of the palette adapts.
+
+## Assets
+
+```yaml
+assets:
+  dir: /etc/compass/assets
+```
+
+| Field   | Notes |
+| ------- | ----- |
+| `dir`   | Optional read-only directory of operator-managed files, served under `/assets/*`. Relative paths are resolved from the config file directory. |
+
+Use this for mounted local icons:
+
+```yaml
+assets:
+  dir: /etc/compass/assets
+
+services:
+  sources:
+    - type: static
+      name: manual
+      services:
+        - name: Internal App
+          url: https://app.example.com
+          icon: /assets/internal-app.png
+```
+
+Compass serves files under `/assets/*` without directory listings. In
+authenticated deployments, this route is exempt from auth like `/static/*`
+so browsers can fetch icons directly.
 
 ## Logging
 

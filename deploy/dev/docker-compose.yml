@@ -79,6 +79,7 @@ services:
     labels:
       compass.adinhodovic.com/urls: "http://localhost:8084"
       compass.adinhodovic.com/tags: "demo"
+      compass.adinhodovic.com/icon: "/assets/http-echo.svg"
 
   # Provides the embedded Grafana panels referenced from
   # compass.yaml's static source.

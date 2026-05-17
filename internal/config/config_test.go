@@ -384,6 +384,52 @@ services:
 	}
 }
 
+func TestLoadAcceptsAssetsDir(t *testing.T) {
+	dir := t.TempDir()
+	path := writeConfig(t, `
+organization:
+  name: Compass
+assets:
+  dir: `+dir+`
+services:
+  sources:
+    - type: static
+      name: manual
+      services:
+        - name: Grafana
+          url: https://grafana.local
+`)
+
+	cfg, err := Load(path)
+	if err != nil {
+		t.Fatalf("load: %v", err)
+	}
+	if cfg.Assets.Dir != dir {
+		t.Fatalf("unexpected assets config: %#v", cfg.Assets)
+	}
+}
+
+func TestLoadRejectsMissingAssetsDir(t *testing.T) {
+	path := writeConfig(t, `
+organization:
+  name: Compass
+assets:
+  dir: /does/not/exist
+services:
+  sources:
+    - type: static
+      name: manual
+      services:
+        - name: Grafana
+          url: https://grafana.local
+`)
+
+	_, err := Load(path)
+	if err == nil || !strings.Contains(err.Error(), "assets.dir") {
+		t.Fatalf("expected assets.dir validation error, got %v", err)
+	}
+}
+
 func writeConfig(t *testing.T, content string) string {
 	t.Helper()
 	path := filepath.Join(t.TempDir(), "compass.yaml")
