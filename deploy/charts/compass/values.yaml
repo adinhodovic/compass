@@ -69,14 +69,14 @@ pages:
   # keys (`on-call/runbook.md`) become navbar dropdowns; top-level keys
   # become direct nav links.
   files: {}
-    # home.md: |
-    #   ---
-    #   title: Home
-    #   ---
-    #   Welcome to Compass.
-    # on-call/runbook.md: |
-    #   # Runbook
-    #   …
+  # home.md: |
+  #   ---
+  #   title: Home
+  #   ---
+  #   Welcome to Compass.
+  # on-call/runbook.md: |
+  #   # Runbook
+  #   …
   existingConfigMap:
     # External ConfigMap to mount instead of generating one from
     # `pages.files`. Each key in the ConfigMap becomes a file under
@@ -95,13 +95,13 @@ catalog:
   # Map of <filename> → YAML content. Files are merged in lexical order;
   # later files win on conflict (per-field).
   files: {}
-    # 01-descriptions.yaml: |
-    #   grafana:
-    #     description: Cluster + service health dashboards.
-    # 99-local.yaml: |
-    #   runbook-compass:
-    #     icon: selfhst:bookstack
-    #     tags: [docs, on-call]
+  # 01-descriptions.yaml: |
+  #   grafana:
+  #     description: Cluster + service health dashboards.
+  # 99-local.yaml: |
+  #   runbook-compass:
+  #     icon: selfhst:bookstack
+  #     tags: [docs, on-call]
   existingConfigMap:
     name: ""
 
@@ -189,12 +189,12 @@ httpRoute:
         value: /
 
 resources: {}
-  # limits:
-  #   cpu: 200m
-  #   memory: 256Mi
-  # requests:
-  #   cpu: 50m
-  #   memory: 64Mi
+# limits:
+#   cpu: 200m
+#   memory: 256Mi
+# requests:
+#   cpu: 50m
+#   memory: 64Mi
 
 # Liveness/readiness target the unauthenticated health endpoint.
 livenessProbe:
