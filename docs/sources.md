@@ -53,7 +53,7 @@ catalog-backfilled when the source omits them.
 | `selfhst:<name>`        | `selfhst:argo-cd`                      | back-compat alias for selfh.st CDN            |
 | Iconify spec            | `simple-icons:grafana`, `lucide:flask` | brands the icon packs lack, generic concepts  |
 | Absolute URL            | `https://example.com/logo.svg`         | custom hosted images                          |
-| Root-relative path      | `/static/brand/favicon.svg`            | bundled or reverse-proxy-served images        |
+| Root-relative path      | `/assets/internal-app.png`             | files served from `assets.dir`, bundled images, or reverse-proxy-served images |
 
 [dashboardicons]: https://dashboardicons.com/
 [selfhst]: https://selfh.st/icons/
@@ -63,7 +63,8 @@ Use `dashboardicons:<name>` first for self-hosted apps; the
 plus a wider set of homelab/dashboard logos. The `selfhst:<name>` prefix
 still works and points at selfh.st's CDN directly. Use `lucide:<name>` for
 generic/internal tools, `simple-icons:<name>` for other brands, and URLs or
-root-relative paths for custom images. Browse Dashboard Icons at
+root-relative paths for custom images. For local mounted files, configure
+`assets.dir` and point icons at `/assets/...`. Browse Dashboard Icons at
 <https://dashboardicons.com/>, selfh.st at <https://selfh.st/icons/>, and
 Iconify at <https://icon-sets.iconify.design/>.
 

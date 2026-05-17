@@ -19,6 +19,7 @@ type Config struct {
 	UI           UIConfig           `yaml:"ui"`
 	Logging      LoggingConfig      `yaml:"logging"`
 	Catalog      CatalogConfig      `yaml:"catalog"`
+	Assets       AssetsConfig       `yaml:"assets"`
 	Pages        PagesConfig        `yaml:"pages"`
 	Home         HomeConfig         `yaml:"home"`
 	Auth         AuthConfig         `yaml:"auth"`
@@ -260,6 +261,12 @@ type CatalogConfig struct {
 	Path string `yaml:"path"`
 }
 
+type AssetsConfig struct {
+	// Dir is an optional read-only directory of operator-managed files served
+	// under /assets. Useful for local service icons mounted into the container.
+	Dir string `yaml:"dir"`
+}
+
 type PagesConfig struct {
 	// Dir is a directory of *.md files; each becomes /pages/{slug}.
 	Dir string `yaml:"dir"`
@@ -456,6 +463,7 @@ func setDefaults(cfg *Config) {
 		on := true
 		cfg.Debug.Enabled = &on
 	}
+	cfg.Assets.Dir = strings.TrimSpace(cfg.Assets.Dir)
 }
 
 // validate runs every defaults-independent semantic check. setDefaults must
@@ -553,6 +561,7 @@ func validateReferencedFiles(cfg *Config) error {
 	}
 	mustExist := []entry{
 		{"catalog.path", cfg.Catalog.Path, true},
+		{"assets.dir", cfg.Assets.Dir, true},
 		{"pages.dir", cfg.Pages.Dir, true},
 	}
 	for _, src := range cfg.Services.Sources {
@@ -622,6 +631,7 @@ func resolvePathsRelativeToConfig(cfg *Config, configDir string) {
 		return filepath.Join(configDir, p)
 	}
 	cfg.Catalog.Path = resolve(cfg.Catalog.Path)
+	cfg.Assets.Dir = resolve(cfg.Assets.Dir)
 	cfg.Pages.Dir = resolve(cfg.Pages.Dir)
 	for i := range cfg.Services.Sources {
 		s := &cfg.Services.Sources[i]

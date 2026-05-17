@@ -292,7 +292,7 @@ func TestAuthMiddlewareExemptsProbeAndScrapePaths(t *testing.T) {
 		Required:   true,
 	}
 	mw := testAuthMiddleware(t, okHandler(), cfg)
-	for _, path := range []string{"/static/app.css", "/health", "/metrics"} {
+	for _, path := range []string{"/static/app.css", "/assets/icon.png", "/health", "/metrics"} {
 		rec := httptest.NewRecorder()
 		mw.ServeHTTP(rec, httptest.NewRequest("GET", path, nil))
 		if rec.Code != http.StatusOK {

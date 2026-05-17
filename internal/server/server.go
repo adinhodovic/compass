@@ -142,6 +142,7 @@ func New(
 	provider ServiceProvider,
 	logger *slog.Logger,
 ) http.Handler {
+	assetsDir := strings.TrimSpace(cfg.Assets.Dir)
 	matchers, err := compileTrustedProxies(cfg.Auth.TrustedProxies)
 	if err != nil {
 		// config.Load already validates trusted_proxies; reaching here means
@@ -195,12 +196,37 @@ func New(
 	mux.HandleFunc("/static/chroma.css", chromaCSSHandler)
 	mux.Handle("/static/", http.StripPrefix("/static/",
 		staticCacheHeaders(devMode, http.FileServer(http.FS(staticRoot)))))
+	if assetsDir != "" {
+		mux.Handle("/assets/", http.StripPrefix("/assets/",
+			staticCacheHeaders(devMode, http.FileServer(noDirFileSystem{fs: http.Dir(assetsDir)}))))
+	}
 	mux.Handle("/metrics", metrics.Handler())
 
 	return loggingMiddleware(
 		metricsMiddleware(authMiddleware(mux, cfg.Auth, matchers, logger)),
 		logger,
 	)
+}
+
+type noDirFileSystem struct {
+	fs http.FileSystem
+}
+
+func (fsys noDirFileSystem) Open(name string) (http.File, error) {
+	file, err := fsys.fs.Open(name)
+	if err != nil {
+		return nil, err
+	}
+	info, err := file.Stat()
+	if err != nil {
+		_ = file.Close()
+		return nil, err
+	}
+	if info.IsDir() {
+		_ = file.Close()
+		return nil, os.ErrNotExist
+	}
+	return file, nil
 }
 
 func (s Server) health(w http.ResponseWriter, _ *http.Request) {

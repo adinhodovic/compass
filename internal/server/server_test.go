@@ -102,6 +102,57 @@ func TestHomeRendersPinnedAndRecentEmptyStates(t *testing.T) {
 	}
 }
 
+func TestServerServesConfiguredAssetsDir(t *testing.T) {
+	dir := t.TempDir()
+	if err := os.WriteFile(
+		filepath.Join(dir, "internal-app.png"),
+		[]byte("png"),
+		0o600,
+	); err != nil {
+		t.Fatalf("write icon: %v", err)
+	}
+	handler := New(
+		config.Config{Assets: config.AssetsConfig{Dir: dir}},
+		staticProvider{},
+		discardLogger(),
+	)
+
+	req := httptest.NewRequest(http.MethodGet, "/assets/internal-app.png", nil)
+	resp := httptest.NewRecorder()
+	handler.ServeHTTP(resp, req)
+
+	if resp.Code != http.StatusOK {
+		t.Fatalf("expected configured asset to render 200, got %d", resp.Code)
+	}
+	if resp.Body.String() != "png" {
+		t.Fatalf("unexpected asset body: %q", resp.Body.String())
+	}
+}
+
+func TestServerDoesNotListConfiguredAssetsDir(t *testing.T) {
+	dir := t.TempDir()
+	if err := os.WriteFile(
+		filepath.Join(dir, "internal-app.png"),
+		[]byte("png"),
+		0o600,
+	); err != nil {
+		t.Fatalf("write icon: %v", err)
+	}
+	handler := New(
+		config.Config{Assets: config.AssetsConfig{Dir: dir}},
+		staticProvider{},
+		discardLogger(),
+	)
+
+	req := httptest.NewRequest(http.MethodGet, "/assets/", nil)
+	resp := httptest.NewRecorder()
+	handler.ServeHTTP(resp, req)
+
+	if resp.Code != http.StatusNotFound {
+		t.Fatalf("expected configured asset directory to return 404, got %d", resp.Code)
+	}
+}
+
 func TestHomeRendersSpecificActionLabels(t *testing.T) {
 	handler := New(config.Config{}, staticProvider{{
 		ID:         "manual-grafana",

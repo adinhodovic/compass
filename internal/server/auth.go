@@ -157,8 +157,8 @@ func hasAnyGroup(have, want []string) bool {
 // topology scrapes from inside the cluster), and the PWA manifest (browsers
 // fetch it without credentials).
 func isAuthExempt(path string) bool {
-	return strings.HasPrefix(path, "/static/") || path == "/health" || path == "/metrics" ||
-		path == "/manifest.webmanifest"
+	return strings.HasPrefix(path, "/static/") || strings.HasPrefix(path, "/assets/") ||
+		path == "/health" || path == "/metrics" || path == "/manifest.webmanifest"
 }
 
 // verifyBasic checks every configured user even when the supplied username
