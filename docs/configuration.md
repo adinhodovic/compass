@@ -57,10 +57,9 @@ The whole file supports `${VAR}` interpolation before YAML parsing. Use
 this for secrets and bootstrap-time values (Headscale API keys, OAuth
 client secrets, etc.) without templating tooling. Bare `$VAR` is left
 literal so dollar-containing values such as bcrypt hashes work inline.
-
-Only the strict `${IDENTIFIER}` form is supported. Shell-style defaults
-(`${VAR:-default}`, `${VAR-x}`) are rejected at load time so a typo never
-silently passes through as a literal value.
+Only the strict `${IDENTIFIER}` form is supported — shell-style defaults
+(`${VAR:-default}`) are rejected at load time so a typo never silently
+passes through.
 
 ## Organization
 
@@ -108,9 +107,7 @@ services:
           icon: /assets/internal-app.png
 ```
 
-Compass serves files under `/assets/*` without directory listings. In
-authenticated deployments, this route is exempt from auth like `/static/*`
-so browsers can fetch icons directly.
+Compass serves files under `/assets/*` without directory listings.
 
 ## Logging
 
@@ -126,9 +123,7 @@ logging:
 | `level`  | `info`  | Controls the root logger threshold. `debug` enables per-request HTTP lines for `/health`, `/static/*`, and `/metrics`; non-static requests log at `info` regardless. 5xx responses always log at `error`. |
 
 Every HTTP request gets one line via the request-logging middleware:
-method, path, status, byte count, duration, and remote address. Source
-refresh outcomes also log here (level depends on whether the source
-errored).
+method, path, status, byte count, duration, and remote address.
 
 ## Catalog
 
@@ -162,12 +157,11 @@ Compass supports four modes:
   HTTP 401.
 - Optional basic auth: populate `auth.basic.users` and leave
   `auth.required: false`. Anonymous users can browse public sources; the
-  Login button opens the browser's Basic auth prompt at `/login`.
-- Optional basic auth and forwarded identity can be combined. Basic
-  credentials identify local users; forwarded identity follows the same
-  `auth.trusted_proxies` trust rules as forwarded-auth mode.
-- Required basic auth: populate `auth.basic.users` and set
-  `auth.required: true`. Compass challenges every non-exempt route.
+  Login button opens the browser's Basic auth prompt at `/login`. Can be
+  combined with forwarded identity, which follows the same
+  `auth.trusted_proxies` trust rules as forward-auth mode.
+- Required basic auth: same as optional, but with `auth.required: true`
+  so Compass challenges every non-exempt route.
 
 ```yaml
 auth:
@@ -201,35 +195,31 @@ auth:
 | `groups_header`   | `X-Forwarded-Groups` | Comma/semicolon/pipe-separated group list. Surfaced in the user menu and available to templates as `.User.Groups`. |
 | `required`        | `false`              | When true, auth is enforced globally: Basic auth challenges when `basic.users` is set, otherwise forwarded auth requires `user_header`. When false, the UI is public and identity is optional. |
 | `required_groups` | `[]`                 | Optional. When non-empty (and `required: true`), requests whose `groups_header` does not contain at least one of these values get 403. |
-| `trusted_proxies` | `[]`                 | Optional CIDR/IP allowlist. When set, forwarded identity headers are trusted only from these remotes. Empty means trust any caller, which is fine when Compass is only reachable through the proxy. The binary logs a warning at startup when `required: true` is paired with an empty list, since a misconfigured deployment would then trust spoofed `X-Forwarded-User` headers. |
+| `trusted_proxies` | `[]`                 | Optional CIDR/IP allowlist. When set, forwarded identity headers are trusted only from these remotes. Empty means trust any caller — fine when Compass is only reachable through the proxy. |
 | `basic.users`     | `[]`                 | Each entry is `{name, password_hash, groups?}`. Hashes are bcrypt; generate with `htpasswd -BnC 10 USER` and strip the `USER:` prefix. The optional `groups` list is injected into `groups_header` on successful login, so basic-auth sessions can exercise the same group plumbing as forward auth (useful for local testing). |
 
 Anonymous users in fully open mode share one browser-local storage scope.
 Favorites, recents, and service notes persist in that browser. In optional-auth
-deployments, anonymous service notes are read-only until the user signs in.
-Nothing is written to `localStorage` without an open-mode or authenticated
-storage scope, so optional-auth kiosk browsers do not share an anonymous notes
-key. `/health`, `/static/*`, `/metrics`, and `/manifest.webmanifest` are
-exempt from auth so probes, assets, scrapes, and PWA installs work regardless
-of mode.
+deployments, anonymous service notes are read-only until the user signs in,
+and optional-auth kiosk browsers do not share an anonymous notes key.
+
+`/health`, `/static/*`, `/assets/*`, `/metrics`, and `/manifest.webmanifest`
+are exempt from auth so probes, assets, scrapes, and PWA installs work
+regardless of mode.
 
 For public read-only browsing with private sources, leave `auth.required`
 false and configure source access rules under `services.sources[].access`.
 Authenticated users can be recognized by optional Basic auth or by a
 trusted forward-auth proxy that injects the configured user and groups
-headers. If Compass is reachable directly, set `auth.trusted_proxies`
-before trusting forwarded headers from a proxy.
+headers. If Compass is reachable directly, set `auth.trusted_proxies` so
+only the proxy's identity headers are believed. The binary logs a startup
+warning when `required: true` is paired with an empty list, since spoofed
+`X-Forwarded-User` headers would otherwise be trusted.
 
 Basic-auth logout is best-effort because browsers cache Basic credentials.
 Compass exposes `/logout` and shows a Logout link for Basic-auth users, but
 some browsers may keep sending credentials until the tab is closed or saved
 credentials are cleared.
-
-The basic-auth verifier always runs bcrypt against every configured user
-(or a fixed dummy hash) regardless of whether the supplied username
-matched. That keeps the wall-clock time of "unknown user" indistinguishable
-from "user exists but wrong password", so attackers can't enumerate
-accounts via response timing.
 
 ## Debug
 
