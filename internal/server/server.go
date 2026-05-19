@@ -86,6 +86,7 @@ type Base struct {
 	DebugVisible    bool
 	CanLogin        bool
 	CanLogout       bool
+	NotesEditable   bool
 	PrimaryColor    string
 	HeaderLinks     []config.LinkConfig
 	FooterLinks     []config.LinkConfig
@@ -336,6 +337,7 @@ func (s Server) baseData(r *http.Request) Base {
 		DebugVisible:    s.debugVisibleTo(r),
 		CanLogin:        !s.cfg.Auth.Required && len(s.cfg.Auth.Basic.Users) > 0,
 		CanLogout:       len(s.cfg.Auth.Basic.Users) > 0,
+		NotesEditable:   s.notesEditable(r),
 		PrimaryColor:    s.cfg.UI.PrimaryColor,
 		HeaderLinks:     s.cfg.HeaderLinks,
 		FooterLinks:     s.cfg.FooterLinks,
@@ -347,6 +349,14 @@ func (s Server) baseData(r *http.Request) Base {
 			Type:        "website",
 		},
 	}
+}
+
+func (s Server) notesEditable(r *http.Request) bool {
+	if s.userFrom(r).LoggedIn() {
+		return true
+	}
+	return len(s.cfg.Auth.Basic.Users) == 0 && !s.cfg.Auth.Required &&
+		len(s.cfg.Auth.TrustedProxies) == 0
 }
 
 func (s Server) debugVisibleTo(r *http.Request) bool {

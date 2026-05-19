@@ -110,21 +110,31 @@
           <h2 class="card-title">Notes</h2>
         </div>
         <div class="flex items-center gap-2">
-          <span class="hidden sm:inline text-xs text-base-content/60" x-show="!editing && note">Saved locally · only visible to you</span>
+          {{if .NotesEditable}}
+          <span class="hidden sm:inline text-xs text-base-content/60" x-show="!editing && note">{{if .User.LoggedIn}}Saved locally · only visible to you{{else}}Saved locally in this browser{{end}}</span>
           <button class="btn btn-sm" type="button" x-on:click="editing = !editing" x-show="!editing">{{icon "lucide:pencil"}}Edit</button>
           <button class="btn btn-sm btn-primary" type="button" x-on:click="save()" x-show="editing">{{icon "lucide:check"}}Save</button>
+          {{else if .CanLogin}}
+          <a class="btn btn-sm btn-primary" href="/login">{{icon "lucide:log-in"}}Login</a>
+          {{end}}
         </div>
       </div>
       <div x-show="!editing">
-        <p x-show="!note" class="text-sm italic text-base-content/50">No notes yet — click Edit to add one. Stored in your browser only.</p>
+        {{if .NotesEditable}}
+        <p x-show="!note" class="text-sm italic text-base-content/50">No notes yet — click Edit to add one. {{if .User.LoggedIn}}Stored in your browser only.{{else}}Stored in this browser only.{{end}}</p>
+        {{else}}
+        <p class="text-sm italic text-base-content/50">Sign in to keep private notes for this service.</p>
+        {{end}}
         <pre x-show="note" class="whitespace-pre-wrap text-sm font-sans bg-accent/5 border border-accent/20 rounded-lg p-3" x-text="note"></pre>
       </div>
+      {{if .NotesEditable}}
       <label class="sr-only" for="service-notes">Service notes</label>
       <textarea id="service-notes" x-show="editing"
                 x-model="draft"
                 rows="6"
                 class="textarea w-full font-mono text-sm"
                 placeholder="Anything you want to remember about this service. Markdown-ish, plain-text, whatever."></textarea>
+      {{end}}
     </div>
   </section>
 

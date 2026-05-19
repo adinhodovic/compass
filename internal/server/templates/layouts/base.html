@@ -66,7 +66,7 @@
   <meta name="twitter:description" content="{{.Meta.Description}}">
   {{if .Meta.Image}}<meta name="twitter:image" content="{{.Meta.Image}}">{{end}}
 </head>
-<body class="antialiased bg-base-100 text-base-content min-h-screen" x-data="compassShell()" data-user="{{if .User.LoggedIn}}{{if .User.Name}}{{.User.Name}}{{else}}{{.User.Email}}{{end}}{{else}}anon{{end}}">
+<body class="antialiased bg-base-100 text-base-content min-h-screen" x-data="compassShell()" data-user="{{if .User.LoggedIn}}{{if .User.Name}}{{.User.Name}}{{else}}{{.User.Email}}{{end}}{{else if eq .AuthMode "open"}}open{{end}}">
 <script type="application/json" id="command-data">{{commandIndex .Base}}</script>
 {{template "nav" .}}
 <main class="container mx-auto px-3 py-6 sm:px-4 sm:py-10 min-h-[calc(100vh-12rem)]">

@@ -85,6 +85,78 @@ func TestServerRendersHomeAndDetail(t *testing.T) {
 	}
 }
 
+func TestServiceNotesEditingModes(t *testing.T) {
+	provider := staticProvider{{
+		ID:         "manual-grafana",
+		Name:       "Grafana",
+		URL:        "https://grafana.local",
+		Source:     "manual",
+		SourceType: compass.SourceTypeStatic,
+	}}
+
+	t.Run("open", func(t *testing.T) {
+		handler := New(config.Config{}, provider, discardLogger())
+		req := httptest.NewRequest(http.MethodGet, "/services/manual-grafana", nil)
+		resp := httptest.NewRecorder()
+
+		handler.ServeHTTP(resp, req)
+
+		if resp.Code != http.StatusOK {
+			t.Fatalf("expected detail to render 200, got %d", resp.Code)
+		}
+		body := resp.Body.String()
+		for _, want := range []string{
+			`data-user="open"`,
+			"Stored in this browser only.",
+			"service-notes",
+			">Edit</button>",
+		} {
+			if !strings.Contains(body, want) {
+				t.Fatalf("expected open detail to contain %q", want)
+			}
+		}
+		for _, unwanted := range []string{"Sign in to keep private notes for this service.", `href="/login"`} {
+			if strings.Contains(body, unwanted) {
+				t.Fatalf("open detail should not contain %q", unwanted)
+			}
+		}
+	})
+
+	t.Run("optional basic", func(t *testing.T) {
+		handler := New(config.Config{
+			Auth: config.AuthConfig{
+				UserHeader: "X-Forwarded-User",
+				Basic: config.BasicAuthConfig{Users: []config.BasicAuthUser{{
+					Name:         "admin",
+					PasswordHash: "$2a$10$He3AU65PBOkfE3oeq0dRxuYvEbBkWECslj3JchYXRVAAqoA6FIaAu",
+				}}},
+			},
+		}, provider, discardLogger())
+
+		req := httptest.NewRequest(http.MethodGet, "/services/manual-grafana", nil)
+		resp := httptest.NewRecorder()
+		handler.ServeHTTP(resp, req)
+		body := resp.Body.String()
+		if !strings.Contains(body, `href="/login"`) {
+			t.Fatalf("expected anonymous optional-basic detail to contain login link")
+		}
+		if strings.Contains(body, "service-notes") {
+			t.Fatalf("anonymous optional-basic detail should not contain notes textarea")
+		}
+
+		req = httptest.NewRequest(http.MethodGet, "/services/manual-grafana", nil)
+		req.SetBasicAuth("admin", "admin")
+		resp = httptest.NewRecorder()
+		handler.ServeHTTP(resp, req)
+		body = resp.Body.String()
+		for _, want := range []string{`data-user="admin"`, "service-notes", ">Edit</button>"} {
+			if !strings.Contains(body, want) {
+				t.Fatalf("expected authenticated detail to contain %q", want)
+			}
+		}
+	})
+}
+
 func TestHomeRendersPinnedAndRecentEmptyStates(t *testing.T) {
 	handler := New(config.Config{}, staticProvider{}, discardLogger())
 	req := httptest.NewRequest(http.MethodGet, "/", nil)

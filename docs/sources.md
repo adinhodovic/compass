@@ -41,6 +41,38 @@ Where each source's keys live:
 `Name` and `URL` are required. `Description`, `Icon`, and `Tags` are
 catalog-backfilled when the source omits them.
 
+## Source Access
+
+Any source can be limited to authenticated users in specific groups with
+`access.required_groups`. Omit `access` to make the source public.
+
+```yaml
+services:
+  sources:
+    - type: static
+      name: public
+      services:
+        - name: Status
+          url: https://status.example.com
+
+    - type: kubernetes
+      name: cluster
+      access:
+        required_groups: [admins, ops]
+      kubernetes:
+        namespaces: []
+```
+
+Rules:
+
+- Source access applies to dashboard cards, service detail pages, command
+  search, page shortcodes, and normal source-status indicators.
+- `/debug` is controlled separately by `debug.required_groups`. Users allowed
+  onto `/debug` see the full source inventory, including sources hidden from
+  their normal dashboard view.
+- Group names come from Basic auth user config or forwarded auth headers. See
+  [Configuration → Auth](configuration.md#auth).
+
 ### Field semantics
 
 #### Icon resolution

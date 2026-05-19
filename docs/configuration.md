@@ -204,11 +204,14 @@ auth:
 | `trusted_proxies` | `[]`                 | Optional CIDR/IP allowlist. When set, forwarded identity headers are trusted only from these remotes. Empty means trust any caller, which is fine when Compass is only reachable through the proxy. The binary logs a warning at startup when `required: true` is paired with an empty list, since a misconfigured deployment would then trust spoofed `X-Forwarded-User` headers. |
 | `basic.users`     | `[]`                 | Each entry is `{name, password_hash, groups?}`. Hashes are bcrypt; generate with `htpasswd -BnC 10 USER` and strip the `USER:` prefix. The optional `groups` list is injected into `groups_header` on successful login, so basic-auth sessions can exercise the same group plumbing as forward auth (useful for local testing). |
 
-Anonymous users (open mode, no header set) get in-memory-only state for
-notes, favorites, and recents. Nothing is written to `localStorage`, so a
-shared kiosk browser can't cross-contaminate sessions. `/health`,
-`/static/*`, `/metrics`, and `/manifest.webmanifest` are exempt from auth
-so probes, assets, scrapes, and PWA installs work regardless of mode.
+Anonymous users in fully open mode share one browser-local storage scope.
+Favorites, recents, and service notes persist in that browser. In optional-auth
+deployments, anonymous service notes are read-only until the user signs in.
+Nothing is written to `localStorage` without an open-mode or authenticated
+storage scope, so optional-auth kiosk browsers do not share an anonymous notes
+key. `/health`, `/static/*`, `/metrics`, and `/manifest.webmanifest` are
+exempt from auth so probes, assets, scrapes, and PWA installs work regardless
+of mode.
 
 For public read-only browsing with private sources, leave `auth.required`
 false and configure source access rules under `services.sources[].access`.
