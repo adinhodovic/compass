@@ -143,10 +143,8 @@ export function debugPagination() {
 }
 
 // serviceNotes is per-service per-user free-form text, persisted to
-// localStorage. When no user identity is forwarded (open-mode Compass,
-// shared kiosk) the "anon" key would let multiple users overwrite each
-// other's notes; in that case notes are kept in-memory only so users
-// don't see each other's drafts on a refresh.
+// localStorage only when the server provides a storage scope. Fully open
+// Compass uses an "open" scope; optional-auth anonymous users get no scope.
 export function serviceNotes(serviceID = '') {
   return {
     editing: false,
