@@ -1,6 +1,7 @@
 package server
 
 import (
+	"context"
 	"crypto/subtle"
 	"fmt"
 	"log/slog"
@@ -13,12 +14,17 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
+type basicAuthContextKey struct{}
+
 // authModeName returns the string template helpers and the /debug
 // stats use to label the active auth mode. Mirrors the dispatch in
 // authMiddleware so the label can never disagree with the runtime.
 func authModeName(cfg config.AuthConfig) string {
 	switch {
 	case len(cfg.Basic.Users) > 0:
+		if !cfg.Required {
+			return "optional-basic"
+		}
 		return "basic"
 	case cfg.Required:
 		return "forwarded"
@@ -35,14 +41,13 @@ var dummyBcryptHash = []byte(
 	"$2a$10$abcdefghijklmnopqrstuOCm/CPiP3xL0NSqSpiSb1bQDXn3T6BBO",
 )
 
-// authMiddleware wraps the mux with the configured auth surface. Three
+// authMiddleware wraps the mux with the configured auth surface. Four
 // modes (see config.AuthConfig):
 //
-//   - basic: prompts for HTTP basic auth, verifies against the bcrypt
-//     hashes in cfg.Auth.Basic.Users; on success injects the username into
-//     the configured UserHeader so downstream handlers see a logged-in
-//     user.
-//   - forward auth (`required: true`): rejects requests without the user
+//   - optional basic: public by default, with /login triggering the Basic
+//     auth prompt and authenticated requests receiving user/group headers.
+//   - required basic: prompts for HTTP basic auth on every non-exempt route.
+//   - forward auth (`required: true`, no basic users): rejects requests without the user
 //     header (401), and rejects callers outside `trusted_proxies` (403)
 //     when that list is set.
 //   - open: passes through. Headers, if present, are still read by
@@ -57,7 +62,7 @@ func authMiddleware(
 	logger *slog.Logger,
 ) http.Handler {
 	if len(cfg.Basic.Users) > 0 {
-		return basicAuthMiddleware(next, cfg, logger)
+		return basicAuthMiddleware(next, cfg)
 	}
 	if cfg.Required {
 		if len(cfg.TrustedProxies) == 0 {
@@ -70,33 +75,89 @@ func authMiddleware(
 	return next
 }
 
+func basicLogout(w http.ResponseWriter) {
+	w.Header().Set("WWW-Authenticate", `Basic realm="compass"`)
+	w.Header().Set("Cache-Control", "no-store")
+	http.Error(
+		w,
+		"Logged out. If your browser keeps sending credentials, close the tab or clear saved credentials.",
+		http.StatusUnauthorized,
+	)
+}
+
+func basicChallenge(w http.ResponseWriter) {
+	w.Header().Set("WWW-Authenticate", `Basic realm="compass"`)
+	http.Error(w, "Unauthorized", http.StatusUnauthorized)
+}
+
 func basicAuthMiddleware(
 	next http.Handler,
 	cfg config.AuthConfig,
-	_ *slog.Logger,
 ) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/logout" {
+			basicLogout(w)
+			return
+		}
+		if !cfg.Required && r.URL.Path == "/login" {
+			if _, ok := authenticateBasicRequest(r, cfg); !ok {
+				basicChallenge(w)
+				return
+			}
+			http.Redirect(w, r, "/", http.StatusFound)
+			return
+		}
 		if isAuthExempt(r.URL.Path) {
 			next.ServeHTTP(w, r)
 			return
 		}
-		user, pass, ok := r.BasicAuth()
-		if !ok || !verifyBasic(cfg.Basic.Users, user, pass) {
-			w.Header().Set("WWW-Authenticate", `Basic realm="compass"`)
-			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		if !cfg.Required {
+			if _, _, ok := r.BasicAuth(); ok {
+				withUser, authed := authenticateBasicRequest(r, cfg)
+				if !authed {
+					basicChallenge(w)
+					return
+				}
+				r = withUser
+			}
+			next.ServeHTTP(w, r)
 			return
 		}
-		// Make the authenticated identity visible to downstream handlers
-		// via the same header the forward-auth path uses, so userFrom()
-		// returns a logged-in user without code branching.
-		r.Header.Set(cfg.UserHeader, user)
-		if cfg.GroupsHeader != "" {
-			if groups := groupsForBasicUser(cfg.Basic.Users, user); len(groups) > 0 {
-				r.Header.Set(cfg.GroupsHeader, strings.Join(groups, ","))
-			}
+		withUser, ok := authenticateBasicRequest(r, cfg)
+		if !ok {
+			basicChallenge(w)
+			return
+		}
+		r = withUser
+		if len(cfg.RequiredGroups) > 0 &&
+			!hasAnyGroup(parseGroups(r.Header.Get(cfg.GroupsHeader)), cfg.RequiredGroups) {
+			http.Error(w, "Forbidden", http.StatusForbidden)
+			return
 		}
 		next.ServeHTTP(w, r)
 	})
+}
+
+func authenticateBasicRequest(r *http.Request, cfg config.AuthConfig) (*http.Request, bool) {
+	user, pass, ok := r.BasicAuth()
+	if !ok || !verifyBasic(cfg.Basic.Users, user, pass) {
+		return r, false
+	}
+	// Make the authenticated identity visible to downstream handlers via the
+	// same header the forward-auth path uses, so userFrom() has one code path.
+	r.Header.Set(cfg.UserHeader, user)
+	if cfg.GroupsHeader != "" {
+		if groups := groupsForBasicUser(cfg.Basic.Users, user); len(groups) > 0 {
+			r.Header.Set(cfg.GroupsHeader, strings.Join(groups, ","))
+		}
+	}
+	ctx := context.WithValue(r.Context(), basicAuthContextKey{}, true)
+	return r.WithContext(ctx), true
+}
+
+func basicAuthVerified(r *http.Request) bool {
+	verified, _ := r.Context().Value(basicAuthContextKey{}).(bool)
+	return verified
 }
 
 // groupsForBasicUser returns the configured groups for the named basic-auth
@@ -150,6 +211,14 @@ func hasAnyGroup(have, want []string) bool {
 		}
 	}
 	return false
+}
+
+func trimGroups(groups []string) []string {
+	out := make([]string, 0, len(groups))
+	for _, group := range groups {
+		out = append(out, strings.TrimSpace(group))
+	}
+	return out
 }
 
 // isAuthExempt is the allowlist for paths the auth middleware lets through

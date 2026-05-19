@@ -96,6 +96,7 @@ func TestAuthMiddlewareBasicAuthRejectsAndAccepts(t *testing.T) {
 	}
 	cfg := config.AuthConfig{
 		UserHeader: "X-Forwarded-User",
+		Required:   true,
 		Basic: config.BasicAuthConfig{
 			Users: []config.BasicAuthUser{{Name: "alice", PasswordHash: string(hash)}},
 		},

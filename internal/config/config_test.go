@@ -161,6 +161,87 @@ services:
 	}
 }
 
+func TestLoadRejectsBlankSourceAccessGroup(t *testing.T) {
+	path := writeConfig(t, `
+organization:
+  name: Compass
+services:
+  sources:
+    - type: static
+      name: manual
+      access:
+        required_groups: [""]
+      services:
+        - name: Grafana
+          url: https://grafana.local
+`)
+
+	_, err := Load(path)
+	if err == nil ||
+		!strings.Contains(err.Error(), "services.sources[0].access.required_groups[0]") {
+		t.Fatalf("expected source access group validation error, got %v", err)
+	}
+}
+
+func TestLoadRejectsBlankDebugRequiredGroup(t *testing.T) {
+	path := writeConfig(t, `
+organization:
+  name: Compass
+debug:
+  required_groups: [""]
+services:
+  sources:
+    - type: static
+      name: manual
+      services:
+        - name: Grafana
+          url: https://grafana.local
+`)
+
+	_, err := Load(path)
+	if err == nil || !strings.Contains(err.Error(), "debug.required_groups[0]") {
+		t.Fatalf("expected debug required group validation error, got %v", err)
+	}
+}
+
+func TestLoadTrimsRequiredGroups(t *testing.T) {
+	path := writeConfig(t, `
+organization:
+  name: Compass
+auth:
+  required: true
+  required_groups: [" admins "]
+debug:
+  required_groups: [" ops "]
+services:
+  sources:
+    - type: static
+      name: manual
+      access:
+        required_groups: [" viewers "]
+      services:
+        - name: Grafana
+          url: https://grafana.local
+`)
+
+	cfg, err := Load(path)
+	if err != nil {
+		t.Fatalf("load: %v", err)
+	}
+	if cfg.Auth.RequiredGroups[0] != "admins" {
+		t.Fatalf("auth group was not trimmed: %q", cfg.Auth.RequiredGroups[0])
+	}
+	if cfg.Debug.RequiredGroups[0] != "ops" {
+		t.Fatalf("debug group was not trimmed: %q", cfg.Debug.RequiredGroups[0])
+	}
+	if cfg.Services.Sources[0].Access.RequiredGroups[0] != "viewers" {
+		t.Fatalf(
+			"source group was not trimmed: %q",
+			cfg.Services.Sources[0].Access.RequiredGroups[0],
+		)
+	}
+}
+
 func TestLoadAcceptsNestedHeaderLinks(t *testing.T) {
 	path := writeConfig(t, `
 organization:

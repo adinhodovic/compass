@@ -31,6 +31,7 @@ home:
 auth:
   user_header: X-Forwarded-User
   email_header: X-Forwarded-Email
+  groups_header: X-Forwarded-Groups
 
 header_links:                # optional; rendered in the navbar
   - { label: Docs, url: https://docs.example.com, icon: lucide:book-open }
@@ -150,7 +151,7 @@ page in `pages.dir` to the site root. The services dashboard moves to
 
 ## Auth
 
-Compass supports three modes:
+Compass supports four modes:
 
 - Open (default): no enforcement; user headers, if present, are used
   for personalization (pinned services, recents, notes scoped to the
@@ -159,8 +160,14 @@ Compass supports three modes:
   upstream proxy (oauth2-proxy, Authelia, Traefik forward-auth, Caddy
   forward_auth, Cloudflare Access). Requests without the user header get
   HTTP 401.
-- Basic auth: populate `auth.basic.users` with bcrypt-hashed
-  credentials and Compass will issue HTTP basic challenges.
+- Optional basic auth: populate `auth.basic.users` and leave
+  `auth.required: false`. Anonymous users can browse public sources; the
+  Login button opens the browser's Basic auth prompt at `/login`.
+- Optional basic auth and forwarded identity can be combined. Basic
+  credentials identify local users; forwarded identity follows the same
+  `auth.trusted_proxies` trust rules as forwarded-auth mode.
+- Required basic auth: populate `auth.basic.users` and set
+  `auth.required: true`. Compass challenges every non-exempt route.
 
 ```yaml
 auth:
@@ -168,8 +175,10 @@ auth:
   email_header: X-Forwarded-Email     # default
   groups_header: X-Forwarded-Groups   # default
 
-  # Forward auth: enforce that an upstream proxy injects user_header.
-  required: true
+  # required=false keeps public browsing enabled. With basic.users, this
+  # shows a Login button and accepts credentials at /login. Without
+  # basic.users, forwarded user/group headers are optional.
+  required: false
   trusted_proxies:                    # optional; warn-only when omitted
     - 10.0.0.0/8
     - 192.168.1.5
@@ -177,7 +186,8 @@ auth:
     - admins
     - ops
 
-  # Basic auth (mutually exclusive with required: true).
+  # Basic auth. Set required=true above to protect the whole UI, or leave
+  # required=false for public browsing plus optional login.
   basic:
     users:
       - name: admin
@@ -188,10 +198,10 @@ auth:
 | ----------------- | -------------------- | -------------------------------------- |
 | `user_header`     | `X-Forwarded-User`   | Username used for personalization scope and the user menu. |
 | `email_header`    | `X-Forwarded-Email`  | Email shown in the user menu.          |
-| `groups_header`   | `X-Forwarded-Groups` | Comma/semicolon/pipe-separated group list. Surfaced in the user menu and available to templates as `.User.Groups` / `.User.InGroup "name"`. |
-| `required`        | `false`              | When true, the middleware returns 401 if `user_header` is empty. |
+| `groups_header`   | `X-Forwarded-Groups` | Comma/semicolon/pipe-separated group list. Surfaced in the user menu and available to templates as `.User.Groups`. |
+| `required`        | `false`              | When true, auth is enforced globally: Basic auth challenges when `basic.users` is set, otherwise forwarded auth requires `user_header`. When false, the UI is public and identity is optional. |
 | `required_groups` | `[]`                 | Optional. When non-empty (and `required: true`), requests whose `groups_header` does not contain at least one of these values get 403. |
-| `trusted_proxies` | `[]`                 | Optional CIDR/IP allowlist. When set, requests from outside the list get 403. Empty means trust any caller, which is fine when Compass is only reachable through the proxy. The binary logs a warning at startup when `required: true` is paired with an empty list, since a misconfigured deployment would then trust spoofed `X-Forwarded-User` headers. |
+| `trusted_proxies` | `[]`                 | Optional CIDR/IP allowlist. When set, forwarded identity headers are trusted only from these remotes. Empty means trust any caller, which is fine when Compass is only reachable through the proxy. The binary logs a warning at startup when `required: true` is paired with an empty list, since a misconfigured deployment would then trust spoofed `X-Forwarded-User` headers. |
 | `basic.users`     | `[]`                 | Each entry is `{name, password_hash, groups?}`. Hashes are bcrypt; generate with `htpasswd -BnC 10 USER` and strip the `USER:` prefix. The optional `groups` list is injected into `groups_header` on successful login, so basic-auth sessions can exercise the same group plumbing as forward auth (useful for local testing). |
 
 Anonymous users (open mode, no header set) get in-memory-only state for
@@ -199,6 +209,18 @@ notes, favorites, and recents. Nothing is written to `localStorage`, so a
 shared kiosk browser can't cross-contaminate sessions. `/health`,
 `/static/*`, `/metrics`, and `/manifest.webmanifest` are exempt from auth
 so probes, assets, scrapes, and PWA installs work regardless of mode.
+
+For public read-only browsing with private sources, leave `auth.required`
+false and configure source access rules under `services.sources[].access`.
+Authenticated users can be recognized by optional Basic auth or by a
+trusted forward-auth proxy that injects the configured user and groups
+headers. If Compass is reachable directly, set `auth.trusted_proxies`
+before trusting forwarded headers from a proxy.
+
+Basic-auth logout is best-effort because browsers cache Basic credentials.
+Compass exposes `/logout` and shows a Logout link for Basic-auth users, but
+some browsers may keep sending credentials until the tab is closed or saved
+credentials are cleared.
 
 The basic-auth verifier always runs bcrypt against every configured user
 (or a fixed dummy hash) regardless of whether the supplied username
@@ -211,12 +233,19 @@ accounts via response timing.
 ```yaml
 debug:
   enabled: false   # default true
+  required_groups: [admins]
 ```
 
 `/debug` is on by default. Set `debug.enabled: false` to suppress the
 route — requests return 404, and the bug icon and footer link are
 hidden from the rendered navbar. Useful when Compass runs in `auth:
 open` mode and you'd rather not expose the source inventory at all.
+
+Set `debug.required_groups` to keep `/debug` enabled but visible only to
+users in at least one listed group. When unset, any user who can access
+Compass can access `/debug`. Users allowed onto `/debug` see the full
+source inventory, including sources hidden from their normal dashboard
+view by `services.sources[].access`.
 
 ## Header and footer links
 
@@ -290,8 +319,36 @@ type-specific config:
 | ------------------ | -------------------------------------------------------------------- |
 | `type`             | Required. One of `static`, `docker`, `kubernetes`, `tailscale`, `headscale`, `api`. |
 | `name`             | Required. Used as the source instance name (shown in the UI and `/debug`). |
+| `access.required_groups` | Optional. When set, services, details, command search entries, page shortcodes, and debug rows from this source are visible only to users in at least one listed group. Omit it or leave it empty for a public source. |
 | `tags`             | Applied to every service from this source. Per-service tags are appended after these. |
 | `refresh_interval` | How often to re-load the source after the initial boot-time load. Empty / unset uses the global default (`5m`). `"0"` or `"0s"` disables periodic refresh — the source loads once at boot and is not retried. Accepts any Go duration (`30s`, `2m`, `1h`). |
+
+Example: public static links plus a Kubernetes source limited to `admins`
+or `ops`:
+
+```yaml
+auth:
+  required: false
+  user_header: X-Forwarded-User
+  groups_header: X-Forwarded-Groups
+  trusted_proxies:
+    - 10.0.0.0/8
+
+services:
+  sources:
+    - type: static
+      name: public
+      services:
+        - name: Status
+          url: https://status.example.com
+
+    - type: kubernetes
+      name: cluster
+      access:
+        required_groups: [admins, ops]
+      kubernetes:
+        namespaces: []
+```
 
 See [Sources](sources.md) for the full per-type catalog and second-class
 recipes.
