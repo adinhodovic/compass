@@ -7,10 +7,10 @@ import (
 	"log/slog"
 	"net"
 	"net/http"
-	"slices"
 	"strings"
 
 	"github.com/adinhodovic/compass/internal/config"
+	"github.com/samber/lo"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -205,20 +205,11 @@ func forwardAuthMiddleware(
 // hasAnyGroup reports whether `have` intersects `want`. Both sides are
 // expected to be small (single-digit lengths), so a nested loop is fine.
 func hasAnyGroup(have, want []string) bool {
-	for _, g := range have {
-		if slices.Contains(want, g) {
-			return true
-		}
-	}
-	return false
+	return lo.SomeBy(have, func(group string) bool { return lo.Contains(want, group) })
 }
 
 func trimGroups(groups []string) []string {
-	out := make([]string, 0, len(groups))
-	for _, group := range groups {
-		out = append(out, strings.TrimSpace(group))
-	}
-	return out
+	return lo.Map(groups, func(group string, _ int) string { return strings.TrimSpace(group) })
 }
 
 // isAuthExempt is the allowlist for paths the auth middleware lets through

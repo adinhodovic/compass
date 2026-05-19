@@ -13,6 +13,7 @@ import (
 	"github.com/adinhodovic/compass/internal/compass"
 	"github.com/adinhodovic/compass/internal/logo"
 	"github.com/adinhodovic/compass/internal/registry"
+	"github.com/samber/lo"
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
 )
@@ -153,11 +154,9 @@ func groupLabel(group string, mode string, services []compass.Service) string {
 }
 
 func serviceIDs(services []compass.Service) template.JS {
-	ids := make([]string, 0, len(services))
-	for _, service := range services {
-		ids = append(ids, service.ID)
-	}
-	return marshalJS(ids)
+	return marshalJS(lo.Map(services, func(service compass.Service, _ int) string {
+		return service.ID
+	}))
 }
 
 // sourceNames emits the per-source picker options as a JSON array of
@@ -169,14 +168,12 @@ func sourceNames(statuses []registry.SourceStatus) template.JS {
 		Value string `json:"value"`
 		Label string `json:"label"`
 	}
-	out := make([]option, 0, len(statuses))
-	for _, s := range statuses {
-		out = append(out, option{
+	return marshalJS(lo.Map(statuses, func(s registry.SourceStatus, _ int) option {
+		return option{
 			Value: s.ID(),
 			Label: sourceLabel(s.Type, s.Name),
-		})
-	}
-	return marshalJS(out)
+		}
+	}))
 }
 
 func titleWords(value string) string {
@@ -195,16 +192,15 @@ func titleWords(value string) string {
 }
 
 func metadataItems(metadata map[string]any) []metadataItem {
-	items := make([]metadataItem, 0, len(metadata))
-	for key, value := range metadata {
+	items := lo.MapToSlice(metadata, func(key string, value any) metadataItem {
 		formatted := metadataValue(value)
-		isURL := strings.HasPrefix(formatted, "http://") || strings.HasPrefix(formatted, "https://")
-		items = append(items, metadataItem{
+		return metadataItem{
 			Key:   titleWords(key),
 			Value: formatted,
-			URL:   isURL,
-		})
-	}
+			URL: strings.HasPrefix(formatted, "http://") ||
+				strings.HasPrefix(formatted, "https://"),
+		}
+	})
 	slices.SortFunc(items, func(a, b metadataItem) int {
 		return cmp.Compare(a.Key, b.Key)
 	})
@@ -235,8 +231,7 @@ func sub(a, b int) int {
 }
 
 func servicesJSON(services []compass.Service) template.JS {
-	items := make([]serviceJSON, 0, len(services))
-	for _, service := range services {
+	return marshalJS(lo.Map(services, func(service compass.Service, _ int) serviceJSON {
 		// Pre-resolve the icon so client-side chips (Pinned, Recent,
 		// command palette) can render an avatar without duplicating the
 		// resolution logic in JS.
@@ -258,7 +253,6 @@ func servicesJSON(services []compass.Service) template.JS {
 		} else {
 			entry.IconText = resolved.Text
 		}
-		items = append(items, entry)
-	}
-	return marshalJS(items)
+		return entry
+	}))
 }
