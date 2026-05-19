@@ -264,6 +264,142 @@ func TestDebugRendersDroppedServices(t *testing.T) {
 	}
 }
 
+func TestDebugRouteRequiresConfiguredGroups(t *testing.T) {
+	handler := New(config.Config{
+		Auth:  config.AuthConfig{GroupsHeader: "X-Forwarded-Groups"},
+		Debug: config.DebugConfig{RequiredGroups: []string{"admins"}},
+	}, staticProvider{}, discardLogger())
+
+	for _, tc := range []struct {
+		name   string
+		groups string
+		want   int
+	}{
+		{name: "anonymous", want: http.StatusNotFound},
+		{name: "wrong group", groups: "viewers", want: http.StatusNotFound},
+		{name: "allowed group", groups: "admins", want: http.StatusOK},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			req := httptest.NewRequest(http.MethodGet, "/debug", nil)
+			if tc.groups != "" {
+				req.Header.Set("X-Forwarded-Groups", tc.groups)
+			}
+			resp := httptest.NewRecorder()
+			handler.ServeHTTP(resp, req)
+			if resp.Code != tc.want {
+				t.Fatalf("expected status %d, got %d", tc.want, resp.Code)
+			}
+		})
+	}
+}
+
+func TestDebugShowsRestrictedSourcesWhenDebugAllowed(t *testing.T) {
+	handler := New(config.Config{
+		Auth:  config.AuthConfig{GroupsHeader: "X-Forwarded-Groups"},
+		Debug: config.DebugConfig{RequiredGroups: []string{"admins"}},
+		Services: config.ServicesConfig{Sources: []config.SourceConfig{{
+			Type: compass.SourceTypeStatic,
+			Name: "private",
+			Access: config.SourceAccessConfig{
+				RequiredGroups: []string{"finance"},
+			},
+		}}},
+	}, debugProvider{
+		services: []compass.Service{{
+			ID:         "payroll",
+			Name:       "Payroll",
+			URL:        "https://payroll.local",
+			Source:     "private",
+			SourceType: compass.SourceTypeStatic,
+		}},
+		statuses: []registry.SourceStatus{{Name: "private", Type: compass.SourceTypeStatic}},
+	}, discardLogger())
+	req := httptest.NewRequest(http.MethodGet, "/debug", nil)
+	req.Header.Set("X-Forwarded-Groups", "admins")
+	resp := httptest.NewRecorder()
+
+	handler.ServeHTTP(resp, req)
+
+	if resp.Code != http.StatusOK {
+		t.Fatalf("expected /debug to render 200, got %d", resp.Code)
+	}
+	body := resp.Body.String()
+	for _, want := range []string{"Payroll", "Restricted source", "finance"} {
+		if !strings.Contains(body, want) {
+			t.Fatalf("expected debug page to contain %q", want)
+		}
+	}
+}
+
+func TestOptionalBasicTrustsForwardedGroupsWhenProxiesUnset(t *testing.T) {
+	handler := New(config.Config{
+		Auth: config.AuthConfig{
+			UserHeader:   "X-Forwarded-User",
+			GroupsHeader: "X-Forwarded-Groups",
+			Basic: config.BasicAuthConfig{Users: []config.BasicAuthUser{{
+				Name:         "admin",
+				PasswordHash: "$2a$10$He3AU65PBOkfE3oeq0dRxuYvEbBkWECslj3JchYXRVAAqoA6FIaAu",
+				Groups:       []string{"admins"},
+			}}},
+		},
+		Debug: config.DebugConfig{RequiredGroups: []string{"admins"}},
+	}, staticProvider{}, discardLogger())
+
+	req := httptest.NewRequest(http.MethodGet, "/debug", nil)
+	req.Header.Set("X-Forwarded-User", "admin")
+	req.Header.Set("X-Forwarded-Groups", "admins")
+	resp := httptest.NewRecorder()
+	handler.ServeHTTP(resp, req)
+	if resp.Code != http.StatusOK {
+		t.Fatalf("expected forwarded groups to be trusted, got %d", resp.Code)
+	}
+
+	req = httptest.NewRequest(http.MethodGet, "/debug", nil)
+	req.SetBasicAuth("admin", "admin")
+	resp = httptest.NewRecorder()
+	handler.ServeHTTP(resp, req)
+	if resp.Code != http.StatusOK {
+		t.Fatalf("expected verified basic auth to access debug, got %d", resp.Code)
+	}
+}
+
+func TestOptionalBasicAcceptsForwardedGroupsFromTrustedProxy(t *testing.T) {
+	handler := New(config.Config{
+		Auth: config.AuthConfig{
+			UserHeader:     "X-Forwarded-User",
+			GroupsHeader:   "X-Forwarded-Groups",
+			TrustedProxies: []string{"10.0.0.0/8"},
+			Basic: config.BasicAuthConfig{Users: []config.BasicAuthUser{{
+				Name:         "admin",
+				PasswordHash: "$2a$10$He3AU65PBOkfE3oeq0dRxuYvEbBkWECslj3JchYXRVAAqoA6FIaAu",
+				Groups:       []string{"admins"},
+			}}},
+		},
+		Debug: config.DebugConfig{RequiredGroups: []string{"admins"}},
+	}, staticProvider{}, discardLogger())
+
+	for _, tc := range []struct {
+		name   string
+		remote string
+		want   int
+	}{
+		{name: "trusted proxy", remote: "10.1.2.3:1234", want: http.StatusOK},
+		{name: "untrusted remote", remote: "203.0.113.10:1234", want: http.StatusNotFound},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			req := httptest.NewRequest(http.MethodGet, "/debug", nil)
+			req.RemoteAddr = tc.remote
+			req.Header.Set("X-Forwarded-User", "admin")
+			req.Header.Set("X-Forwarded-Groups", "admins")
+			resp := httptest.NewRecorder()
+			handler.ServeHTTP(resp, req)
+			if resp.Code != tc.want {
+				t.Fatalf("expected status %d, got %d", tc.want, resp.Code)
+			}
+		})
+	}
+}
+
 func TestGroupLabelUsesTagWhenGroupedByTags(t *testing.T) {
 	services := []compass.Service{{Source: "cluster", SourceType: compass.SourceTypeKubernetes}}
 
@@ -427,6 +563,197 @@ func TestServicesTemplateIncludesFilterHooks(t *testing.T) {
 		}
 		if !strings.Contains(body, want) {
 			t.Fatalf("expected rendered services template to contain %q", want)
+		}
+	}
+}
+
+func TestSourceAccessFiltersServicesByGroups(t *testing.T) {
+	provider := staticProvider{
+		{
+			ID:         "grafana",
+			Name:       "Grafana",
+			URL:        "https://grafana.local",
+			Source:     "public",
+			SourceType: compass.SourceTypeStatic,
+		},
+		{
+			ID:         "prometheus",
+			Name:       "Prometheus",
+			URL:        "https://prometheus.local",
+			Source:     "private",
+			SourceType: compass.SourceTypeStatic,
+		},
+	}
+	handler := New(config.Config{
+		Auth: config.AuthConfig{GroupsHeader: "X-Forwarded-Groups"},
+		Services: config.ServicesConfig{Sources: []config.SourceConfig{
+			{Type: compass.SourceTypeStatic, Name: "public"},
+			{
+				Type: compass.SourceTypeStatic,
+				Name: "private",
+				Access: config.SourceAccessConfig{
+					RequiredGroups: []string{"admins"},
+				},
+			},
+		}},
+	}, provider, discardLogger())
+
+	for _, tc := range []struct {
+		name             string
+		groups           string
+		wantPrometheus   bool
+		wantDetailStatus int
+	}{
+		{name: "anonymous", wantDetailStatus: http.StatusNotFound},
+		{name: "wrong group", groups: "viewers", wantDetailStatus: http.StatusNotFound},
+		{name: "allowed group", groups: "ops, admins", wantPrometheus: true, wantDetailStatus: http.StatusOK},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			req := httptest.NewRequest(http.MethodGet, "/services", nil)
+			if tc.groups != "" {
+				req.Header.Set("X-Forwarded-Groups", tc.groups)
+			}
+			resp := httptest.NewRecorder()
+			handler.ServeHTTP(resp, req)
+
+			if resp.Code != http.StatusOK {
+				t.Fatalf("expected /services to render 200, got %d", resp.Code)
+			}
+			body := resp.Body.String()
+			if !strings.Contains(body, "Grafana") {
+				t.Fatalf("expected public service to render")
+			}
+			if got := strings.Contains(body, "Prometheus"); got != tc.wantPrometheus {
+				t.Fatalf("private service rendered=%v, want %v", got, tc.wantPrometheus)
+			}
+
+			req = httptest.NewRequest(http.MethodGet, "/services/prometheus", nil)
+			if tc.groups != "" {
+				req.Header.Set("X-Forwarded-Groups", tc.groups)
+			}
+			resp = httptest.NewRecorder()
+			handler.ServeHTTP(resp, req)
+			if resp.Code != tc.wantDetailStatus {
+				t.Fatalf(
+					"expected private detail status %d, got %d",
+					tc.wantDetailStatus,
+					resp.Code,
+				)
+			}
+		})
+	}
+}
+
+func TestDevAdminBasicAuthSeesRestrictedSource(t *testing.T) {
+	handler := New(config.Config{
+		Auth: config.AuthConfig{
+			UserHeader:   "X-Forwarded-User",
+			GroupsHeader: "X-Forwarded-Groups",
+			Basic: config.BasicAuthConfig{Users: []config.BasicAuthUser{{
+				Name:         "admin",
+				PasswordHash: "$2a$10$He3AU65PBOkfE3oeq0dRxuYvEbBkWECslj3JchYXRVAAqoA6FIaAu",
+				Groups:       []string{"admins", "ops"},
+			}}},
+		},
+		Services: config.ServicesConfig{Sources: []config.SourceConfig{
+			{Type: compass.SourceTypeStatic, Name: "manual"},
+			{Type: compass.SourceTypeStatic, Name: "lab"},
+			{
+				Type: compass.SourceTypeStatic,
+				Name: "private",
+				Access: config.SourceAccessConfig{
+					RequiredGroups: []string{"admins"},
+				},
+			},
+		}},
+	}, staticProvider{
+		{
+			ID:         "grafana",
+			Name:       "Grafana",
+			URL:        "https://grafana.local",
+			Source:     "manual",
+			SourceType: compass.SourceTypeStatic,
+		},
+		{
+			ID:         "duplicate-demo-lab",
+			Name:       "Duplicate Demo",
+			URL:        "https://duplicate-demo.local",
+			Source:     "lab",
+			SourceType: compass.SourceTypeStatic,
+		},
+		{
+			ID:         "admin-console",
+			Name:       "Admin Console",
+			URL:        "https://admin.local",
+			Source:     "private",
+			SourceType: compass.SourceTypeStatic,
+		},
+	}, discardLogger())
+
+	unauthReq := httptest.NewRequest(http.MethodGet, "/services", nil)
+	unauthResp := httptest.NewRecorder()
+	handler.ServeHTTP(unauthResp, unauthReq)
+	if unauthResp.Code != http.StatusOK {
+		t.Fatalf(
+			"expected unauthenticated request to render public services, got %d",
+			unauthResp.Code,
+		)
+	}
+	unauthBody := unauthResp.Body.String()
+	if !strings.Contains(unauthBody, "Grafana") ||
+		!strings.Contains(unauthBody, "Duplicate Demo") ||
+		strings.Contains(unauthBody, "Admin Console") {
+		t.Fatalf("expected anonymous user to see public but not restricted services")
+	}
+	if !strings.Contains(unauthBody, `href="/login"`) {
+		t.Fatalf("expected anonymous page to include login link")
+	}
+
+	loginReq := httptest.NewRequest(http.MethodGet, "/login", nil)
+	loginResp := httptest.NewRecorder()
+	handler.ServeHTTP(loginResp, loginReq)
+	if loginResp.Code != http.StatusUnauthorized {
+		t.Fatalf("expected /login without credentials to challenge, got %d", loginResp.Code)
+	}
+	if got := loginResp.Header().Get("WWW-Authenticate"); got != `Basic realm="compass"` {
+		t.Fatalf("unexpected basic challenge header: %q", got)
+	}
+
+	loginReq = httptest.NewRequest(http.MethodGet, "/login", nil)
+	loginReq.SetBasicAuth("admin", "admin")
+	loginResp = httptest.NewRecorder()
+	handler.ServeHTTP(loginResp, loginReq)
+	if loginResp.Code != http.StatusFound || loginResp.Header().Get("Location") != "/" {
+		t.Fatalf(
+			"expected successful login to redirect home, got %d %q",
+			loginResp.Code,
+			loginResp.Header().Get("Location"),
+		)
+	}
+
+	logoutReq := httptest.NewRequest(http.MethodGet, "/logout", nil)
+	logoutReq.SetBasicAuth("admin", "admin")
+	logoutResp := httptest.NewRecorder()
+	handler.ServeHTTP(logoutResp, logoutReq)
+	if logoutResp.Code != http.StatusUnauthorized {
+		t.Fatalf("expected /logout to return 401, got %d", logoutResp.Code)
+	}
+	if got := logoutResp.Header().Get("WWW-Authenticate"); got != `Basic realm="compass"` {
+		t.Fatalf("unexpected logout challenge header: %q", got)
+	}
+
+	req := httptest.NewRequest(http.MethodGet, "/services", nil)
+	req.SetBasicAuth("admin", "admin")
+	resp := httptest.NewRecorder()
+	handler.ServeHTTP(resp, req)
+
+	if resp.Code != http.StatusOK {
+		t.Fatalf("expected admin request to render 200, got %d", resp.Code)
+	}
+	body := resp.Body.String()
+	for _, want := range []string{"Grafana", "Duplicate Demo", "Admin Console"} {
+		if !strings.Contains(body, want) {
+			t.Fatalf("expected admin page to contain %q", want)
 		}
 	}
 }

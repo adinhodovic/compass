@@ -44,6 +44,8 @@ type Server struct {
 	tmpl           *template.Template
 	pages          *pages.Loader
 	trustedProxies []trustedProxyMatcher
+	sourceAccess   map[string][]string
+	debugGroups    []string
 	// org is the precomputed organization config (with defaults applied).
 	// Never changes after New(), so we resolve once instead of every
 	// baseData() call.
@@ -70,12 +72,6 @@ func (u User) LoggedIn() bool {
 	return u.Name != "" || u.Email != ""
 }
 
-// InGroup reports whether the user is a member of the named group.
-// Comparison is case-sensitive — match the casing your proxy emits.
-func (u User) InGroup(name string) bool {
-	return slices.Contains(u.Groups, name)
-}
-
 // Base is the common data every page template gets. The command palette
 // (rendered in base.html so it's available everywhere) reads Services
 // and Pages from here.
@@ -83,10 +79,12 @@ type Base struct {
 	Organization    config.OrganizationConfig
 	Pages           []pages.Section
 	User            User
-	AuthMode        string // "basic" | "forwarded" | "open"
+	AuthMode        string // "basic" | "optional-basic" | "forwarded" | "open"
 	Services        []compass.Service
 	HasSourceErrors bool
-	DebugEnabled    bool
+	DebugVisible    bool
+	CanLogin        bool
+	CanLogout       bool
 	PrimaryColor    string
 	HeaderLinks     []config.LinkConfig
 	FooterLinks     []config.LinkConfig
@@ -133,6 +131,7 @@ type debugData struct {
 	Base
 	Statuses      []registry.SourceStatus
 	Groups        map[string][]compass.Service // keyed by source name
+	AccessGroups  map[string][]string          // keyed by source ID
 	Dropped       []registry.DroppedService
 	DroppedGroups map[string][]registry.DroppedService
 }
@@ -157,6 +156,8 @@ func New(
 		logger:         logger,
 		pages:          pages.NewLoader(cfg.Pages.Dir),
 		trustedProxies: matchers,
+		sourceAccess:   sourceAccessGroups(cfg.Services.Sources),
+		debugGroups:    trimGroups(cfg.Debug.RequiredGroups),
 		org:            org,
 		orgLogo:        logo.Resolve(org.Logo, org.Name, "organization"),
 		devMode:        devMode,
@@ -264,7 +265,7 @@ func (s Server) home(w http.ResponseWriter, r *http.Request) {
 		page, content, toc, err := s.pages.Get(
 			s.cfg.Home.Section,
 			s.cfg.Home.Page,
-			s.provider.Services(),
+			s.visibleServicesFor(r),
 		)
 		if err == nil {
 			base := s.baseData(r)
@@ -317,13 +318,7 @@ func (s Server) renderServices(w http.ResponseWriter, r *http.Request) {
 // baseData fills the fields every template needs. Services is populated
 // from the provider; Pages from the loader; User from request headers.
 func (s Server) baseData(r *http.Request) Base {
-	hasErrors := false
-	for _, st := range s.provider.SourceStatuses() {
-		if st.Error != "" {
-			hasErrors = true
-			break
-		}
-	}
+	hasErrors := sourceStatusesHaveErrors(s.visibleSourceStatusesFor(r))
 	org := s.org
 	origin := absoluteOrigin(r, s.trustedProxies)
 	image := ""
@@ -335,9 +330,11 @@ func (s Server) baseData(r *http.Request) Base {
 		Pages:           s.pageList(),
 		User:            s.userFrom(r),
 		AuthMode:        authModeName(s.cfg.Auth),
-		Services:        s.provider.Services(),
+		Services:        s.visibleServicesFor(r),
 		HasSourceErrors: hasErrors,
-		DebugEnabled:    s.cfg.Debug.IsEnabled(),
+		DebugVisible:    s.debugVisibleTo(r),
+		CanLogin:        !s.cfg.Auth.Required && len(s.cfg.Auth.Basic.Users) > 0,
+		CanLogout:       len(s.cfg.Auth.Basic.Users) > 0,
 		PrimaryColor:    s.cfg.UI.PrimaryColor,
 		HeaderLinks:     s.cfg.HeaderLinks,
 		FooterLinks:     s.cfg.FooterLinks,
@@ -349,6 +346,54 @@ func (s Server) baseData(r *http.Request) Base {
 			Type:        "website",
 		},
 	}
+}
+
+func (s Server) debugVisibleTo(r *http.Request) bool {
+	if !s.cfg.Debug.IsEnabled() {
+		return false
+	}
+	if len(s.debugGroups) == 0 {
+		return true
+	}
+	return hasAnyGroup(s.userFrom(r).Groups, s.debugGroups)
+}
+
+func (s Server) visibleServicesFor(r *http.Request) []compass.Service {
+	services := s.provider.Services()
+	if len(s.sourceAccess) == 0 {
+		return services
+	}
+	user := s.userFrom(r)
+	out := make([]compass.Service, 0, len(services))
+	for _, service := range services {
+		if s.sourceVisibleTo(service.SourceID(), user) {
+			out = append(out, service)
+		}
+	}
+	return out
+}
+
+func (s Server) visibleSourceStatusesFor(r *http.Request) []registry.SourceStatus {
+	statuses := s.provider.SourceStatuses()
+	if len(s.sourceAccess) == 0 {
+		return statuses
+	}
+	user := s.userFrom(r)
+	out := make([]registry.SourceStatus, 0, len(statuses))
+	for _, status := range statuses {
+		if s.sourceVisibleTo(status.ID(), user) {
+			out = append(out, status)
+		}
+	}
+	return out
+}
+
+func (s Server) sourceVisibleTo(sourceID string, user User) bool {
+	groups, ok := s.sourceAccess[sourceID]
+	if !ok {
+		return true
+	}
+	return hasAnyGroup(user.Groups, groups)
 }
 
 // absoluteOrigin reconstructs the public scheme://host the client used to
@@ -442,15 +487,44 @@ func (s Server) debug(w http.ResponseWriter, r *http.Request) {
 		http.NotFound(w, r)
 		return
 	}
+	if !s.debugVisibleTo(r) {
+		http.NotFound(w, r)
+		return
+	}
 	base := s.baseData(r)
+	base.Services = s.provider.Services()
 	dropped := s.provider.DroppedServices()
+	statuses := s.provider.SourceStatuses()
+	base.HasSourceErrors = sourceStatusesHaveErrors(statuses)
 	s.render(w, "debug", debugData{
 		Base:          base,
-		Statuses:      s.provider.SourceStatuses(),
+		Statuses:      statuses,
 		Groups:        registry.Group(base.Services, compass.GroupBySource),
+		AccessGroups:  s.sourceAccess,
 		Dropped:       dropped,
 		DroppedGroups: groupDroppedServices(dropped),
 	})
+}
+
+func sourceAccessGroups(sources []config.SourceConfig) map[string][]string {
+	out := make(map[string][]string)
+	for _, source := range sources {
+		if len(source.Access.RequiredGroups) == 0 {
+			continue
+		}
+		groups := trimGroups(source.Access.RequiredGroups)
+		out[strings.TrimSpace(source.Type)+"/"+strings.TrimSpace(source.Name)] = groups
+	}
+	return out
+}
+
+func sourceStatusesHaveErrors(statuses []registry.SourceStatus) bool {
+	for _, st := range statuses {
+		if st.Error != "" {
+			return true
+		}
+	}
+	return false
 }
 
 func groupDroppedServices(services []registry.DroppedService) map[string][]registry.DroppedService {
@@ -494,6 +568,14 @@ func (s Server) manifest(w http.ResponseWriter, r *http.Request) {
 // the zero User when no trusted headers are configured or set.
 func (s Server) userFrom(r *http.Request) User {
 	var u User
+	if len(s.cfg.Auth.Basic.Users) > 0 && !basicAuthVerified(r) &&
+		len(s.trustedProxies) > 0 && !remoteAllowed(r, s.trustedProxies) {
+		return u
+	}
+	if len(s.cfg.Auth.Basic.Users) == 0 && len(s.trustedProxies) > 0 &&
+		!remoteAllowed(r, s.trustedProxies) {
+		return u
+	}
 	if h := s.cfg.Auth.UserHeader; h != "" {
 		u.Name = strings.TrimSpace(r.Header.Get(h))
 	}
@@ -550,7 +632,7 @@ func (s Server) page(w http.ResponseWriter, r *http.Request) {
 		http.NotFound(w, r)
 		return
 	}
-	page, content, toc, err := s.pages.Get(section, slug, s.provider.Services())
+	page, content, toc, err := s.pages.Get(section, slug, s.visibleServicesFor(r))
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
 			http.NotFound(w, r)

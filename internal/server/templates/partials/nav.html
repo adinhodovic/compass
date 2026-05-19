@@ -121,7 +121,7 @@
           <span>Search</span>
           <kbd class="kbd kbd-sm">Ctrl+K</kbd>
         </button>
-        {{if .DebugEnabled}}
+        {{if .DebugVisible}}
         <a class="btn btn-ghost btn-sm btn-square hidden md:inline-flex relative" href="/debug" aria-label="Debug">
           {{icon "lucide:bug"}}
           {{if .HasSourceErrors}}<span class="absolute top-1 right-1 size-2 rounded-full bg-error" aria-hidden="true"></span><span class="sr-only">Source errors</span>{{end}}
@@ -150,12 +150,25 @@
               {{if .User.Groups}}
               <p class="mt-3 text-xs uppercase tracking-wide text-base-content/60">Groups</p>
               <div class="mt-1 flex flex-wrap gap-1">
-                {{range .User.Groups}}<span class="badge badge-ghost badge-sm">{{.}}</span>{{end}}
+                {{range .User.Groups}}<span class="badge badge-outline badge-sm">{{.}}</span>{{end}}
               </div>
               {{end}}
             </div>
+            {{if .CanLogout}}
+            <div class="border-t border-base-300 p-2">
+              <a class="btn btn-ghost btn-sm w-full justify-start gap-2" href="/logout">
+                {{icon "lucide:log-out"}}
+                <span>Logout</span>
+              </a>
+            </div>
+            {{end}}
           </div>
         </div>
+        {{else if .CanLogin}}
+        <a class="btn btn-primary btn-sm hidden md:inline-flex" href="/login">
+          {{icon "lucide:log-in"}}
+          <span>Login</span>
+        </a>
         {{end}}
         <div class="dropdown dropdown-end md:hidden" x-on:click.outside="closeMobileMenu()" x-on:keydown.escape.window="closeMobileMenu()">
           <button class="btn btn-ghost btn-sm btn-square" type="button" x-on:click="toggleMobileMenu()" x-bind:aria-expanded="mobileMenuOpen" aria-controls="mobile-navigation" aria-label="Open navigation menu">
@@ -169,10 +182,14 @@
                 <p class="truncate font-medium">{{if .User.Name}}{{.User.Name}}{{else}}{{.User.Email}}{{end}}</p>
               </div>
             </li>
+            {{if .CanLogout}}<li><a href="/logout" x-on:click="closeMobileMenu()">{{icon "lucide:log-out"}}Logout</a></li>{{end}}
+            <li></li>
+            {{else if .CanLogin}}
+            <li><a href="/login" x-on:click="closeMobileMenu()">{{icon "lucide:log-in"}}Login</a></li>
             <li></li>
             {{end}}
             <li><a href="/services" x-on:click="closeMobileMenu()">{{icon "lucide:layout-grid"}}Services</a></li>
-            {{if .DebugEnabled}}<li><a href="/debug" x-on:click="closeMobileMenu()">{{icon "lucide:bug"}}Debug{{if .HasSourceErrors}}<span class="badge badge-error badge-xs">errors</span>{{end}}</a></li>{{end}}
+            {{if .DebugVisible}}<li><a href="/debug" x-on:click="closeMobileMenu()">{{icon "lucide:bug"}}Debug{{if .HasSourceErrors}}<span class="badge badge-error badge-xs">errors</span>{{end}}</a></li>{{end}}
             {{if .HeaderLinks}}
             <li class="menu-title">Links</li>
             {{range .HeaderLinks}}

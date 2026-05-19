@@ -46,21 +46,25 @@ ui:
 #   # section: about                      # optional sub-directory
 
 # ──────────────────────────────────────────────────────────────────
-# Auth — three modes, see docs/configuration.md#auth for details.
-#   * Open  : leave required=false and basic.users empty
-#   * Forward: required=true (upstream proxy injects user_header)
-#   * Basic  : populate basic.users (mutually exclusive with required=true)
+# Auth — see docs/configuration.md#auth for details.
+#   * Open          : required=false and basic.users empty
+#   * Optional Basic: required=false and basic.users set; Login prompts auth
+#   * Required Basic: required=true and basic.users set
+#   * Forward       : required=true and basic.users empty; proxy injects user_header
 # ──────────────────────────────────────────────────────────────────
 
 # auth:
 #   user_header: X-Forwarded-User         # default
 #   email_header: X-Forwarded-Email       # default
 #   groups_header: X-Forwarded-Groups     # default; split on , ; |
-#   required: true                        # forward auth: 401 without user header
+#   required: false                       # true enforces Basic or forwarded auth globally
 #   trusted_proxies:                      # optional CIDR/IP allowlist
 #     - 10.0.0.0/8
 #   required_groups:                      # optional; 403 if user is in none
 #     - admins
+#   # For public read-only browsing with private sources, leave required=false
+#   # and use services.sources[].access.required_groups. Set trusted_proxies
+#   # when Compass is reachable directly and forwarded headers are used.
 #   basic:
 #     users:
 #       - name: admin
@@ -75,6 +79,7 @@ ui:
 
 # debug:
 #   enabled: false
+#   required_groups: [admins]             # optional; hide /debug from others
 
 # ──────────────────────────────────────────────────────────────────
 # Static navbar / footer links — not tied to any source.
@@ -130,6 +135,8 @@ services:
     # for in-cluster vs. remote-cluster credential setups.
     - type: kubernetes
       name: cluster
+      # access:                         # omit or leave empty for public sources
+      #   required_groups: [admins, ops]
       kubernetes:
         namespaces: []                    # [] = all namespaces
         auto_discover_all: true           # false = require compass.adinhodovic.com/enabled=true label

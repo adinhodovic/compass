@@ -33,7 +33,8 @@ type Config struct {
 // installs keep their /debug dashboard; set `enabled: false` to suppress
 // the route entirely (any request returns 404).
 type DebugConfig struct {
-	Enabled *bool `yaml:"enabled"`
+	Enabled        *bool    `yaml:"enabled"`
+	RequiredGroups []string `yaml:"required_groups"`
 }
 
 // IsEnabled reports whether the debug surface is on. Defaults to true
@@ -180,21 +181,20 @@ type HomeConfig struct {
 	Section string `yaml:"section"`
 }
 
-// AuthConfig configures Compass's authentication surface. Three modes:
+// AuthConfig configures Compass's authentication surface. Four modes:
 //
 //   - **Open** (default): no enforcement; user headers, if present, are
 //     read for personalization only.
-//   - **Forward auth** (`required: true`): Compass trusts an upstream
+//   - **Optional basic auth** (`basic.users` non-empty, `required: false`):
+//     Compass stays public, shows a login link, and accepts basic-auth
+//     credentials for users who want private source visibility.
+//   - **Required basic auth** (`basic.users` non-empty, `required: true`):
+//     Compass challenges every non-exempt request.
+//   - **Forward auth** (`required: true`, no `basic.users`): Compass trusts an upstream
 //     proxy (oauth2-proxy, authelia, traefik forwardauth, Caddy
 //     forward_auth, etc.) to populate `user_header`. Requests without the
 //     header get HTTP 401. `trusted_proxies` optionally limits which
 //     upstream IPs are honored.
-//   - **Basic auth** (`basic.users` non-empty): Compass challenges with
-//     HTTP basic and verifies the password against the bcrypt hash in
-//     config.
-//
-// `required: true` and a non-empty `basic.users` list together is a
-// configuration error — pick one.
 type AuthConfig struct {
 	// UserHeader is the request header containing the username. Defaults to
 	// "X-Forwarded-User". Read in all three modes.
@@ -207,10 +207,11 @@ type AuthConfig struct {
 	// semicolons, or pipes; surrounding whitespace is trimmed. Read in
 	// all three modes.
 	GroupsHeader string `yaml:"groups_header"`
-	// Required enforces forward-auth: requests without the user header get
-	// HTTP 401. Mutually exclusive with `basic.users`.
+	// Required enforces auth. With basic.users, requests without valid Basic
+	// credentials get HTTP 401. Without basic.users, requests without the
+	// forwarded user header get HTTP 401.
 	Required bool `yaml:"required"`
-	// RequiredGroups, when non-empty, gates forward-auth: requests whose
+	// RequiredGroups, when non-empty, gates required auth: requests whose
 	// groups don't intersect this set get HTTP 403. Ignored unless
 	// `required: true`.
 	RequiredGroups []string `yaml:"required_groups"`
@@ -273,9 +274,10 @@ type PagesConfig struct {
 }
 
 type SourceConfig struct {
-	Type     string            `yaml:"type"`
-	Name     string            `yaml:"name"`
-	Services []compass.Service `yaml:"services"`
+	Type     string             `yaml:"type"`
+	Name     string             `yaml:"name"`
+	Access   SourceAccessConfig `yaml:"access"`
+	Services []compass.Service  `yaml:"services"`
 	// Tags applied to every service discovered from this source. Per-service
 	// tags (from upstream metadata) are appended after these.
 	Tags []string `yaml:"tags"`
@@ -290,6 +292,12 @@ type SourceConfig struct {
 	Tailscale       TailscaleConfig   `yaml:"tailscale"`
 	Headscale       HeadscaleConfig   `yaml:"headscale"`
 	Docker          DockerConfig      `yaml:"docker"`
+}
+
+type SourceAccessConfig struct {
+	// RequiredGroups limits this source to users whose auth groups intersect
+	// the list. Empty means the source is visible to everyone.
+	RequiredGroups []string `yaml:"required_groups"`
 }
 
 type DockerConfig struct {
@@ -488,20 +496,13 @@ func validate(cfg *Config) error {
 			cfg.Logging.Level,
 		)
 	}
-	if cfg.Auth.Required && len(cfg.Auth.Basic.Users) > 0 {
-		return fmt.Errorf(
-			"auth.required and auth.basic.users are mutually exclusive — pick forward auth or basic auth",
-		)
-	}
 	if len(cfg.Auth.RequiredGroups) > 0 && !cfg.Auth.Required {
 		return fmt.Errorf(
 			"auth.required_groups has no effect unless auth.required is true",
 		)
 	}
-	for i, g := range cfg.Auth.RequiredGroups {
-		if strings.TrimSpace(g) == "" {
-			return fmt.Errorf("auth.required_groups[%d]: must be non-empty", i)
-		}
+	if err := normalizeGroups("auth.required_groups", cfg.Auth.RequiredGroups); err != nil {
+		return err
 	}
 	for i, user := range cfg.Auth.Basic.Users {
 		if strings.TrimSpace(user.Name) == "" {
@@ -514,6 +515,9 @@ func validate(cfg *Config) error {
 				user.Name,
 			)
 		}
+	}
+	if err := normalizeGroups("debug.required_groups", cfg.Debug.RequiredGroups); err != nil {
+		return err
 	}
 	if err := validateTrustedProxies(cfg.Auth.TrustedProxies); err != nil {
 		return err
@@ -533,6 +537,12 @@ func validate(cfg *Config) error {
 			return fmt.Errorf("services.sources[%d]: duplicate source identity %q", i, identity)
 		}
 		seenSources[identity] = struct{}{}
+		if err := normalizeGroups(
+			fmt.Sprintf("services.sources[%d].access.required_groups", i),
+			source.Access.RequiredGroups,
+		); err != nil {
+			return err
+		}
 	}
 	for _, pattern := range cfg.Services.Filters.ExcludeURLPatterns {
 		pattern = strings.TrimSpace(pattern)
@@ -546,6 +556,17 @@ func validate(cfg *Config) error {
 				err,
 			)
 		}
+	}
+	return nil
+}
+
+func normalizeGroups(field string, groups []string) error {
+	for i, group := range groups {
+		group = strings.TrimSpace(group)
+		if group == "" {
+			return fmt.Errorf("%s[%d]: must be non-empty", field, i)
+		}
+		groups[i] = group
 	}
 	return nil
 }

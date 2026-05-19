@@ -97,7 +97,7 @@
     <span class="hidden sm:inline" aria-hidden="true">·</span>
     <nav class="flex flex-wrap items-center justify-center gap-x-3 gap-y-1" aria-label="Site">
       <a class="link link-hover" href="/services">Services</a>
-      {{if .DebugEnabled}}<a class="link link-hover" href="/debug">Debug</a>{{end}}
+      {{if .DebugVisible}}<a class="link link-hover" href="/debug">Debug</a>{{end}}
       {{range .FooterLinks}}
       <a class="link link-hover" href="{{.URL}}"{{if .OpensInNewTab}} target="_blank" rel="noopener"{{end}}>{{.Label}}</a>
       {{end}}

@@ -7,14 +7,19 @@ organization:
 ui:
   default_group_by: source
 
-# Dev-only basic auth so the signed-in UI is visible locally.
+# Dev-only optional basic auth. Public sources stay visible anonymously;
+# log in to see admin-only sources.
 # Username: admin / password: admin
 auth:
+  required: false
   basic:
     users:
       - name: admin
         password_hash: $2a$10$He3AU65PBOkfE3oeq0dRxuYvEbBkWECslj3JchYXRVAAqoA6FIaAu
         groups: [admins, ops]
+
+debug:
+  required_groups: [admins]
 
 # Catalog overrides merged onto the embedded base in lexical order.
 catalog:
@@ -90,6 +95,18 @@ services:
           tags: [demo]
           description: Second duplicate service for local UI testing.
           icon: lucide:copy
+
+    - type: static
+      name: private
+      access:
+        required_groups: [admins, ops]
+      tags: [private]
+      services:
+        - name: Admin Console
+          url: http://localhost:8085
+          tags: [admin]
+          description: Admin-only service for testing optional auth and source visibility.
+          icon: lucide:shield-check
 
     # Exercises the docker source: compass.adinhodovic.com/urls labels plus
     # the Traefik Host(...) rule fallback (see whoami in compose).
