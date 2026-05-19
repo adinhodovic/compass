@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/adinhodovic/compass/internal/compass"
+	"github.com/samber/lo"
 )
 
 const (
@@ -51,10 +52,7 @@ func StringSlice(value any) []string {
 	var raw []string
 	switch typed := value.(type) {
 	case []any:
-		raw = make([]string, len(typed))
-		for i, item := range typed {
-			raw[i] = fmt.Sprint(item)
-		}
+		raw = lo.Map(typed, func(item any, _ int) string { return fmt.Sprint(item) })
 	case []string:
 		raw = typed
 	case string:
@@ -62,13 +60,7 @@ func StringSlice(value any) []string {
 	default:
 		return nil
 	}
-	result := make([]string, 0, len(raw))
-	for _, item := range raw {
-		if item = strings.TrimSpace(item); item != "" {
-			result = append(result, item)
-		}
-	}
-	return result
+	return trimNonEmpty(raw)
 }
 
 // DefaultBool returns fallback when value is nil.
@@ -135,18 +127,7 @@ func MergeTags(base, extra []string) []string {
 	if len(base) == 0 && len(extra) == 0 {
 		return nil
 	}
-	seen := make(map[string]bool, len(base)+len(extra))
-	merged := make([]string, 0, len(base)+len(extra))
-	for _, group := range [][]string{base, extra} {
-		for _, t := range group {
-			t = strings.TrimSpace(t)
-			if t != "" && !seen[t] {
-				seen[t] = true
-				merged = append(merged, t)
-			}
-		}
-	}
-	return merged
+	return lo.Uniq(append(trimNonEmpty(base), trimNonEmpty(extra)...))
 }
 
 func LookupPath(value any, path string) any {
@@ -188,15 +169,14 @@ func CommaList(value string) []string {
 		return nil
 	}
 	parts := strings.Split(value, ",")
-	result := make([]string, 0, len(parts))
-	for _, part := range parts {
-		trimmed := strings.TrimSpace(part)
-		if trimmed != "" {
-			result = append(result, trimmed)
-		}
-	}
+	return trimNonEmpty(parts)
+}
 
-	return result
+func trimNonEmpty(values []string) []string {
+	return lo.FilterMap(values, func(value string, _ int) (string, bool) {
+		trimmed := strings.TrimSpace(value)
+		return trimmed, trimmed != ""
+	})
 }
 
 // URLEntry is one item from a multi-URL annotation. Title is empty when the

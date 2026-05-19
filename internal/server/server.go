@@ -21,6 +21,7 @@ import (
 	"github.com/adinhodovic/compass/internal/metrics"
 	"github.com/adinhodovic/compass/internal/pages"
 	"github.com/adinhodovic/compass/internal/registry"
+	"github.com/samber/lo"
 )
 
 //go:embed templates
@@ -364,13 +365,9 @@ func (s Server) visibleServicesFor(r *http.Request) []compass.Service {
 		return services
 	}
 	user := s.userFrom(r)
-	out := make([]compass.Service, 0, len(services))
-	for _, service := range services {
-		if s.sourceVisibleTo(service.SourceID(), user) {
-			out = append(out, service)
-		}
-	}
-	return out
+	return lo.Filter(services, func(service compass.Service, _ int) bool {
+		return s.sourceVisibleTo(service.SourceID(), user)
+	})
 }
 
 func (s Server) visibleSourceStatusesFor(r *http.Request) []registry.SourceStatus {
@@ -379,13 +376,9 @@ func (s Server) visibleSourceStatusesFor(r *http.Request) []registry.SourceStatu
 		return statuses
 	}
 	user := s.userFrom(r)
-	out := make([]registry.SourceStatus, 0, len(statuses))
-	for _, status := range statuses {
-		if s.sourceVisibleTo(status.ID(), user) {
-			out = append(out, status)
-		}
-	}
-	return out
+	return lo.Filter(statuses, func(status registry.SourceStatus, _ int) bool {
+		return s.sourceVisibleTo(status.ID(), user)
+	})
 }
 
 func (s Server) sourceVisibleTo(sourceID string, user User) bool {
@@ -507,24 +500,22 @@ func (s Server) debug(w http.ResponseWriter, r *http.Request) {
 }
 
 func sourceAccessGroups(sources []config.SourceConfig) map[string][]string {
-	out := make(map[string][]string)
-	for _, source := range sources {
-		if len(source.Access.RequiredGroups) == 0 {
-			continue
-		}
-		groups := trimGroups(source.Access.RequiredGroups)
-		out[strings.TrimSpace(source.Type)+"/"+strings.TrimSpace(source.Name)] = groups
-	}
-	return out
+	return lo.Associate(
+		lo.Filter(sources, func(source config.SourceConfig, _ int) bool {
+			return len(source.Access.RequiredGroups) > 0
+		}),
+		func(source config.SourceConfig) (string, []string) {
+			return strings.TrimSpace(source.Type) + "/" + strings.TrimSpace(source.Name),
+				trimGroups(source.Access.RequiredGroups)
+		},
+	)
 }
 
 func sourceStatusesHaveErrors(statuses []registry.SourceStatus) bool {
-	for _, st := range statuses {
-		if st.Error != "" {
-			return true
-		}
-	}
-	return false
+	return lo.SomeBy(
+		statuses,
+		func(status registry.SourceStatus) bool { return status.Error != "" },
+	)
 }
 
 func groupDroppedServices(services []registry.DroppedService) map[string][]registry.DroppedService {
@@ -600,12 +591,10 @@ func parseGroups(raw string) []string {
 	fields := strings.FieldsFunc(raw, func(r rune) bool {
 		return r == ',' || r == ';' || r == '|'
 	})
-	out := make([]string, 0, len(fields))
-	for _, f := range fields {
-		if g := strings.TrimSpace(f); g != "" {
-			out = append(out, g)
-		}
-	}
+	out := lo.FilterMap(fields, func(field string, _ int) (string, bool) {
+		group := strings.TrimSpace(field)
+		return group, group != ""
+	})
 	if len(out) == 0 {
 		return nil
 	}
