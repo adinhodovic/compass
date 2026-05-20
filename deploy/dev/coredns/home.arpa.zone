@@ -1,0 +1,10 @@
+$ORIGIN home.arpa.
+$TTL 60
+@ IN SOA ns.home.arpa. hostmaster.home.arpa. 1 7200 3600 1209600 60
+@ IN NS ns.home.arpa.
+
+ns IN A 127.0.0.1
+
+_http._tcp IN SRV 0 10 3000 grafana.localhost.
+_http._tcp IN SRV 0 10 8081 caddy.localhost.
+_http._tcp IN SRV 0 10 8084 echo.localhost.

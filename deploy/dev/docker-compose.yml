@@ -128,6 +128,19 @@ services:
       retries: 6
       start_period: 5s
 
+  # Exercises the dns_sd source. Compass runs on the host and queries this
+  # CoreDNS instance directly via dns_sd.nameservers: [127.0.0.1:1053].
+  coredns:
+    image: coredns/coredns:1.12.4
+    restart: unless-stopped
+    command: -conf /etc/coredns/Corefile
+    ports:
+      - "1053:53/udp"
+      - "1053:53/tcp"
+    volumes:
+      - ./coredns/Corefile:/etc/coredns/Corefile:ro
+      - ./coredns/home.arpa.zone:/zones/home.arpa.zone:ro
+
   # Self-hosted Tailscale coordination server. The named volume
   # persists state across dev-up cycles; headscale-init idempotently
   # bootstraps a user, two demo nodes, and an API key.

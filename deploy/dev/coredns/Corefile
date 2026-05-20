@@ -1,0 +1,5 @@
+home.arpa:53 {
+    errors
+    log
+    file /zones/home.arpa.zone
+}

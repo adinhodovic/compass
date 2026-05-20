@@ -84,6 +84,25 @@ func TestBuildSourcesAllowsSameNameAcrossTypes(t *testing.T) {
 	}
 }
 
+func TestBuildSourcesSupportsDNSSD(t *testing.T) {
+	entries, err := BuildSources(
+		config.Config{Services: config.ServicesConfig{Sources: []config.SourceConfig{{
+			Type: compass.SourceTypeDNSSD,
+			Name: "lan",
+			DNSSD: config.DNSSDConfig{
+				Names: []string{"_http._tcp.home.arpa"},
+			},
+		}}}},
+		&http.Client{},
+	)
+	if err != nil {
+		t.Fatalf("build sources: %v", err)
+	}
+	if len(entries) != 1 || entries[0].Source.Type() != compass.SourceTypeDNSSD {
+		t.Fatalf("expected dns_sd source, got %#v", entries)
+	}
+}
+
 func TestParseRefreshIntervalDefaultsAndRejectsNegative(t *testing.T) {
 	got, err := parseRefreshInterval("")
 	if err != nil {

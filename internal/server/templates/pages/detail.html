@@ -114,8 +114,6 @@
           <span class="hidden sm:inline text-xs text-base-content/60" x-show="!editing && note">{{if .User.LoggedIn}}Saved locally · only visible to you{{else}}Saved locally in this browser{{end}}</span>
           <button class="btn btn-sm" type="button" x-on:click="editing = !editing" x-show="!editing">{{icon "lucide:pencil"}}Edit</button>
           <button class="btn btn-sm btn-primary" type="button" x-on:click="save()" x-show="editing">{{icon "lucide:check"}}Save</button>
-          {{else if .CanLogin}}
-          <a class="btn btn-sm btn-primary" href="/login">{{icon "lucide:log-in"}}Login</a>
           {{end}}
         </div>
       </div>
@@ -123,7 +121,10 @@
         {{if .NotesEditable}}
         <p x-show="!note" class="text-sm italic text-base-content/50">No notes yet — click Edit to add one. {{if .User.LoggedIn}}Stored in your browser only.{{else}}Stored in this browser only.{{end}}</p>
         {{else}}
-        <p class="text-sm italic text-base-content/50">Sign in to keep private notes for this service.</p>
+        <div class="rounded-lg border border-base-300 bg-base-200/50 p-3 text-sm text-base-content/70">
+          <p><a class="link link-primary font-semibold" href="/login">Sign in</a> to add private notes for this service.</p>
+          <p class="mt-1 text-xs text-base-content/50">Notes are stored only in your browser and scoped to your user.</p>
+        </div>
         {{end}}
         <pre x-show="note" class="whitespace-pre-wrap text-sm font-sans bg-accent/5 border border-accent/20 rounded-lg p-3" x-text="note"></pre>
       </div>

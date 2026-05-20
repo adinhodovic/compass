@@ -288,6 +288,7 @@ type SourceConfig struct {
 	Endpoint        string            `yaml:"endpoint"`
 	Headers         map[string]string `yaml:"headers"`
 	Mapping         MappingConfig     `yaml:"mapping"`
+	DNSSD           DNSSDConfig       `yaml:"dns_sd"`
 	Kubernetes      KubernetesConfig  `yaml:"kubernetes"`
 	Tailscale       TailscaleConfig   `yaml:"tailscale"`
 	Headscale       HeadscaleConfig   `yaml:"headscale"`
@@ -298,6 +299,20 @@ type SourceAccessConfig struct {
 	// RequiredGroups limits this source to users whose auth groups intersect
 	// the list. Empty means the source is visible to everyone.
 	RequiredGroups []string `yaml:"required_groups"`
+}
+
+type DNSSDConfig struct {
+	// Names are Prometheus-style DNS-SD names, such as
+	// _http._tcp.example.lan. Only SRV records are supported because they carry
+	// both host and port, which Compass needs to build dashboard URLs.
+	Names []string `yaml:"names"`
+	Type  string   `yaml:"type"`
+	// Nameservers optionally overrides the system resolver. Entries are host:port
+	// endpoints, for example 127.0.0.1:5353.
+	Nameservers []string `yaml:"nameservers"`
+	// URLScheme overrides the scheme inferred from the service name. When empty,
+	// _https._tcp uses https and everything else uses http.
+	URLScheme string `yaml:"url_scheme"`
 }
 
 type DockerConfig struct {
@@ -543,6 +558,11 @@ func validate(cfg *Config) error {
 		); err != nil {
 			return err
 		}
+		if typeName == compass.SourceTypeDNSSD {
+			if err := validateDNSSDSource(i, source.DNSSD); err != nil {
+				return err
+			}
+		}
 	}
 	for _, pattern := range cfg.Services.Filters.ExcludeURLPatterns {
 		pattern = strings.TrimSpace(pattern)
@@ -558,6 +578,59 @@ func validate(cfg *Config) error {
 		}
 	}
 	return nil
+}
+
+func validateDNSSDSource(i int, cfg DNSSDConfig) error {
+	field := fmt.Sprintf("services.sources[%d].dns_sd", i)
+	if len(cfg.Names) == 0 {
+		return fmt.Errorf("%s.names must contain at least one name", field)
+	}
+	for j, name := range cfg.Names {
+		name = strings.TrimSpace(name)
+		if name == "" {
+			return fmt.Errorf("%s.names[%d]: must be non-empty", field, j)
+		}
+		if _, _, _, ok := ParseDNSSDName(name); !ok {
+			return fmt.Errorf(
+				"%s.names[%d]: must be a service name like _http._tcp.example.lan",
+				field,
+				j,
+			)
+		}
+	}
+	for j, nameserver := range cfg.Nameservers {
+		nameserver = strings.TrimSpace(nameserver)
+		if nameserver == "" {
+			return fmt.Errorf("%s.nameservers[%d]: must be non-empty", field, j)
+		}
+		if _, _, err := net.SplitHostPort(nameserver); err != nil {
+			return fmt.Errorf("%s.nameservers[%d]: must be host:port", field, j)
+		}
+	}
+	switch strings.ToUpper(strings.TrimSpace(cfg.Type)) {
+	case "", "SRV":
+		return nil
+	default:
+		return fmt.Errorf("%s.type must be SRV", field)
+	}
+}
+
+// ParseDNSSDName splits a Prometheus-style DNS-SD name into LookupSRV parts.
+func ParseDNSSDName(raw string) (service, proto, name string, ok bool) {
+	parts := strings.Split(strings.Trim(strings.TrimSpace(raw), "."), ".")
+	if len(parts) < 3 {
+		return "", "", "", false
+	}
+	if !strings.HasPrefix(parts[0], "_") || !strings.HasPrefix(parts[1], "_") {
+		return "", "", "", false
+	}
+	service = strings.TrimPrefix(parts[0], "_")
+	proto = strings.TrimPrefix(parts[1], "_")
+	name = strings.Join(parts[2:], ".")
+	if service == "" || proto == "" || name == "" {
+		return "", "", "", false
+	}
+	return service, proto, name, true
 }
 
 func normalizeGroups(field string, groups []string) error {

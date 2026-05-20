@@ -122,6 +122,8 @@ func sourceTypeLabel(sourceType string) string {
 		return "Static"
 	case compass.SourceTypeAPI:
 		return "API"
+	case compass.SourceTypeDNSSD:
+		return "DNS SD"
 	case "":
 		return "Unknown Source"
 	default:
