@@ -137,11 +137,12 @@ func TestServiceNotesEditingModes(t *testing.T) {
 		resp := httptest.NewRecorder()
 		handler.ServeHTTP(resp, req)
 		body := resp.Body.String()
-		if !strings.Contains(body, `href="/login"`) {
-			t.Fatalf("expected anonymous optional-basic detail to contain login link")
-		}
 		if strings.Contains(body, "service-notes") {
 			t.Fatalf("anonymous optional-basic detail should not contain notes textarea")
+		}
+		if !strings.Contains(body, `href="/login"`) ||
+			!strings.Contains(body, "to add private notes for this service.") {
+			t.Fatalf("expected anonymous optional-basic detail to explain private notes")
 		}
 
 		req = httptest.NewRequest(http.MethodGet, "/services/manual-grafana", nil)
@@ -484,6 +485,9 @@ func TestGroupLabelUsesTagWhenGroupedByTags(t *testing.T) {
 		services,
 	); got != "Kubernetes · Cluster" {
 		t.Fatalf("expected source label, got %q", got)
+	}
+	if got := sourceLabel(compass.SourceTypeDNSSD, "lan"); got != "DNS SD · Lan" {
+		t.Fatalf("expected dns_sd source label, got %q", got)
 	}
 }
 

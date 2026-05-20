@@ -36,6 +36,7 @@ Where each source's keys live:
 | `tailscale`  | Tailscale Service annotations                     |
 | `headscale`  | Native gRPC node fields; no annotation surface    |
 | `api`        | `mapping.fields` map keys (values are `gjson` paths) |
+| `dns_sd`     | DNS SRV record fields; no annotation surface          |
 | `static`     | Top-level YAML keys per service                   |
 
 `Name` and `URL` are required. `Description`, `Icon`, and `Tags` are
@@ -410,6 +411,49 @@ Limits:
 The dev compose stack at `deploy/dev/docker-compose.yml` exercises
 this fallback via the `whoami` service, which has no
 `compass.adinhodovic.com/urls` label and only a Traefik rule.
+
+#### DNS-SD
+
+Discovers services from Prometheus-style DNS SRV records. For each SRV answer,
+Compass creates one service from the target host and port.
+
+```yaml
+- type: dns_sd
+  name: lan
+  tags: [lan]
+  dns_sd:
+    # Optional. Omit to use the host's system resolver.
+    nameservers: [127.0.0.1:1053]
+    names:
+      - _http._tcp.home.arpa
+      - _https._tcp.home.arpa
+```
+
+Behavior:
+
+- Only `SRV` records are supported, and `dns_sd.type` defaults to `SRV`. SRV is
+  the useful DNS-SD shape for Compass because it includes both target host and
+  port.
+- `dns_sd.nameservers` optionally points Compass at specific DNS servers using
+  `host:port` entries. When omitted, Compass uses the system DNS resolver.
+- Names use the Prometheus form `_service._proto.domain`, such as
+  `_http._tcp.home.arpa`.
+- `_https._tcp...` records default to `https`; every other service defaults to
+  `http`.
+- Set `dns_sd.url_scheme` to override scheme inference for all records in the
+  source.
+- The first DNS label of the SRV target is used as the display name. Catalog
+  fallback can still fill in descriptions and icons when names match.
+
+Example with an explicit scheme override:
+
+```yaml
+- type: dns_sd
+  name: apps
+  dns_sd:
+    names: [_apps._tcp.home.arpa]
+    url_scheme: https
+```
 
 #### Kubernetes
 

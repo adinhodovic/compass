@@ -5,6 +5,7 @@ const (
 	GroupBySource = "source"
 
 	SourceTypeAPI        = "api"
+	SourceTypeDNSSD      = "dns_sd"
 	SourceTypeDocker     = "docker"
 	SourceTypeHeadscale  = "headscale"
 	SourceTypeKubernetes = "kubernetes"

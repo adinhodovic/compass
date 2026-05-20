@@ -11,6 +11,7 @@ import (
 	"github.com/adinhodovic/compass/internal/compass"
 	"github.com/adinhodovic/compass/internal/config"
 	apisource "github.com/adinhodovic/compass/internal/source/api"
+	dnssdsource "github.com/adinhodovic/compass/internal/source/dnssd"
 	dockersource "github.com/adinhodovic/compass/internal/source/docker"
 	headscalesource "github.com/adinhodovic/compass/internal/source/headscale"
 	kubernetessource "github.com/adinhodovic/compass/internal/source/kubernetes"
@@ -38,6 +39,7 @@ type Closer interface {
 
 var (
 	_ Source        = apisource.Source{}
+	_ Source        = dnssdsource.Source{}
 	_ Source        = dockersource.Source{}
 	_ LogAttributer = dockersource.Source{}
 	_ Source        = headscalesource.Source{}
@@ -77,6 +79,8 @@ func BuildSources(cfg config.Config, client *http.Client) ([]Entry, error) {
 			src = staticsource.New(sourceConfig)
 		case compass.SourceTypeAPI:
 			src = apisource.New(sourceConfig, client)
+		case compass.SourceTypeDNSSD:
+			src = dnssdsource.New(sourceConfig)
 		case compass.SourceTypeKubernetes:
 			s, err := kubernetessource.New(sourceConfig)
 			if err != nil {

@@ -144,6 +144,16 @@ services:
           url: Meta.url
           tags: Tags
 
+    # Exercises Prometheus-style DNS SRV discovery against the CoreDNS dev
+    # container.
+    - type: dns_sd
+      name: coredns
+      tags: [dns, service-discovery]
+      dns_sd:
+        nameservers: [127.0.0.1:1053]
+        names:
+          - _http._tcp.home.arpa
+
     # Exercises the headscale source over gRPC. `make dev` exports
     # HEADSCALE_API_KEY from the headscale-init bootstrap output.
     - type: headscale

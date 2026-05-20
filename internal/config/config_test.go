@@ -161,6 +161,85 @@ services:
 	}
 }
 
+func TestLoadValidatesDNSSDSource(t *testing.T) {
+	tests := []struct {
+		name    string
+		snippet string
+		wantErr string
+	}{
+		{
+			name: "valid default type",
+			snippet: `
+    - type: dns_sd
+      name: lan
+      dns_sd:
+        nameservers: [127.0.0.1:1053]
+        names: [_http._tcp.home.arpa]`,
+		},
+		{
+			name: "invalid nameserver",
+			snippet: `
+    - type: dns_sd
+      name: lan
+      dns_sd:
+        nameservers: [127.0.0.1]
+        names: [_http._tcp.home.arpa]`,
+			wantErr: "dns_sd.nameservers[0]: must be host:port",
+		},
+		{
+			name: "missing names",
+			snippet: `
+    - type: dns_sd
+      name: lan
+      dns_sd:
+        type: SRV`,
+			wantErr: "dns_sd.names must contain at least one name",
+		},
+		{
+			name: "unsupported type",
+			snippet: `
+    - type: dns_sd
+      name: lan
+      dns_sd:
+        names: [_http._tcp.home.arpa]
+        type: A`,
+			wantErr: "dns_sd.type must be SRV",
+		},
+		{
+			name: "malformed name",
+			snippet: `
+    - type: dns_sd
+      name: lan
+      dns_sd:
+        names: [http._tcp.home.arpa]
+        type: SRV`,
+			wantErr: "must be a service name like _http._tcp.example.lan",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			path := writeConfig(t, `
+organization:
+  name: Compass
+services:
+  sources:`+tt.snippet+`
+`)
+
+			_, err := Load(path)
+			if tt.wantErr == "" {
+				if err != nil {
+					t.Fatalf("load: %v", err)
+				}
+				return
+			}
+			if err == nil || !strings.Contains(err.Error(), tt.wantErr) {
+				t.Fatalf("expected %q error, got %v", tt.wantErr, err)
+			}
+		})
+	}
+}
+
 func TestLoadRejectsBlankSourceAccessGroup(t *testing.T) {
 	path := writeConfig(t, `
 organization:
