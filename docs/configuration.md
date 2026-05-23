@@ -57,7 +57,7 @@ The whole file supports `${VAR}` interpolation before YAML parsing. Use
 this for secrets and bootstrap-time values (Headscale API keys, OAuth
 client secrets, etc.) without templating tooling. Bare `$VAR` is left
 literal so dollar-containing values such as bcrypt hashes work inline.
-Only the strict `${IDENTIFIER}` form is supported — shell-style defaults
+Only the strict `${IDENTIFIER}` form is supported. Shell-style defaults
 (`${VAR:-default}`) are rejected at load time so a typo never silently
 passes through.
 
@@ -195,7 +195,7 @@ auth:
 | `groups_header`   | `X-Forwarded-Groups` | Comma/semicolon/pipe-separated group list. Surfaced in the user menu and available to templates as `.User.Groups`. |
 | `required`        | `false`              | When true, auth is enforced globally: Basic auth challenges when `basic.users` is set, otherwise forwarded auth requires `user_header`. When false, the UI is public and identity is optional. |
 | `required_groups` | `[]`                 | Optional. When non-empty (and `required: true`), requests whose `groups_header` does not contain at least one of these values get 403. |
-| `trusted_proxies` | `[]`                 | Optional CIDR/IP allowlist. When set, forwarded identity headers are trusted only from these remotes. Empty means trust any caller — fine when Compass is only reachable through the proxy. |
+| `trusted_proxies` | `[]`                 | Optional CIDR/IP allowlist. When set, forwarded identity headers are trusted only from these remotes. Empty means trust any caller, which is fine when Compass is only reachable through the proxy. |
 | `basic.users`     | `[]`                 | Each entry is `{name, password_hash, groups?}`. Hashes are bcrypt; generate with `htpasswd -BnC 10 USER` and strip the `USER:` prefix. The optional `groups` list is injected into `groups_header` on successful login, so basic-auth sessions can exercise the same group plumbing as forward auth (useful for local testing). |
 
 Anonymous users in fully open mode share one browser-local storage scope.
@@ -230,7 +230,7 @@ debug:
 ```
 
 `/debug` is on by default. Set `debug.enabled: false` to suppress the
-route — requests return 404, and the bug icon and footer link are
+route. Requests return 404, and the bug icon and footer link are
 hidden from the rendered navbar. Useful when Compass runs in `auth:
 open` mode and you'd rather not expose the source inventory at all.
 
@@ -314,7 +314,7 @@ type-specific config:
 | `name`             | Required. Used as the source instance name (shown in the UI and `/debug`). |
 | `access.required_groups` | Optional. When set, services, details, command search entries, page shortcodes, and debug rows from this source are visible only to users in at least one listed group. Omit it or leave it empty for a public source. |
 | `tags`             | Applied to every service from this source. Per-service tags are appended after these. |
-| `refresh_interval` | How often to re-load the source after the initial boot-time load. Empty / unset uses the global default (`5m`). `"0"` or `"0s"` disables periodic refresh — the source loads once at boot and is not retried. Accepts any Go duration (`30s`, `2m`, `1h`). |
+| `refresh_interval` | How often to re-load the source after the initial boot-time load. Empty / unset uses the global default (`5m`). `"0"` or `"0s"` disables periodic refresh; the source loads once at boot and is not retried. Accepts any Go duration (`30s`, `2m`, `1h`). |
 
 Example: public static links plus a Kubernetes source limited to `admins`
 or `ops`:
@@ -380,6 +380,5 @@ account, explicit `kubernetes.kubeconfig`, `KUBECONFIG`, `~/.kube/config`).
 See [Sources → Kubernetes → Authentication](sources.md#authentication)
 for the full resolution order and remote-cluster setup.
 
-For the running binary's operator-facing surfaces (`/debug`, `/metrics`,
-`SIGHUP`, the per-source health page, and the rest of the endpoint
-table), see [Operations](operations.md).
+For runtime checks such as `/debug`, `/metrics`, and logs, see
+[Operations](operations.md).

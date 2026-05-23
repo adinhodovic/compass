@@ -59,8 +59,7 @@ debug view.
 - [Sources](sources.md): integrations and the shared service model.
 - [Catalog](catalog.md): default icons, descriptions, and tags.
 - [Pages](pages.md): markdown content with live service shortcodes.
-- [Operations](operations.md): endpoints, metrics, refresh, logs.
-- [Troubleshooting](troubleshooting.md): common errors and fixes.
+- [Operations](operations.md): endpoints, metrics, refresh, logs, and troubleshooting.
 - [Development](development.md): local setup and asset pipeline.
 
 ## Acknowledgments

@@ -8,8 +8,8 @@ registry fills the rest from the catalog by matching the service name.
 Compass ships with ~180 entries baked in (see
 [`internal/catalog/services.yaml`][catalog-source]) covering common
 self-hosted apps. Every embedded icon is a [Dashboard Icons][dashboardicons]
-slug — that project aggregates [selfh.st][selfhst] plus a wider set of
-homelab logos — so a freshly discovered `grafana` HTTPRoute renders with the
+slug. That project aggregates [selfh.st][selfhst] plus a wider set of
+homelab logos, so a freshly discovered `grafana` HTTPRoute renders with the
 right logo and a one-line description without any per-cluster configuration.
 
 [catalog-source]: https://github.com/adinhodovic/compass/blob/main/internal/catalog/services.yaml
@@ -45,7 +45,7 @@ catalog:
 
 `catalog.path` is a directory, resolved relative to `compass.yaml`. Every
 `*.yaml` / `*.yml` file inside is loaded in lexical order and merged onto
-the embedded base per field — a file that only sets `tags:` leaves
+the embedded base per field. A file that only sets `tags:` leaves
 `description` and `icon` alone.
 
 Splitting by concern keeps diffs readable:
@@ -58,5 +58,5 @@ catalog/
 ```
 
 A later file's value wins on conflict. Slice fields (`tags`) are replaced
-wholesale, not appended — restate the whole list to add a tag to an
+wholesale, not appended. Restate the whole list to add a tag to an
 embedded entry.

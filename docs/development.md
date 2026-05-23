@@ -5,7 +5,7 @@
 - Go 1.26+ (the version pinned in `go.mod`)
 - Node.js 20+ (Tailwind / daisyUI compile, vendored JS deps from
   `node_modules`, and esbuild minify of `assets/app.js`)
-- [`air`](https://github.com/air-verse/air) on `PATH` for the dev loop —
+- [`air`](https://github.com/air-verse/air) on `PATH` for the dev loop:
   `make dev` checks for it and prints the install hint when missing
   (`go install github.com/air-verse/air@latest`)
 - Docker + Docker Compose (for local dev dependencies)
@@ -52,10 +52,10 @@ via api, consul via api, headscale, plus optional kubernetes/tailscale if
 their creds are available) against that stack. After `make dev`, useful
 URLs:
 
-- <http://localhost:8080/> — custom home page from `deploy/dev/pages/home.md`.
-- <http://localhost:8080/services> — the discovered services dashboard.
-- <http://localhost:8080/pages/architecture> — markdown page embedding live service cards via the `{{< services >}}` shortcode.
-- <http://localhost:8080/debug> — per-source health and the raw discovery output for each one.
+- <http://localhost:8080/>: custom home page from `deploy/dev/pages/home.md`.
+- <http://localhost:8080/services>: the discovered services dashboard.
+- <http://localhost:8080/pages/architecture>: markdown page embedding live service cards via the `{{< services >}}` shortcode.
+- <http://localhost:8080/debug>: per-source health and the raw discovery output for each one.
 
 Skip a source by leaving its config block out. Optional real-infrastructure
 sources in `deploy/dev/compass.yaml` are commented out when credentials are

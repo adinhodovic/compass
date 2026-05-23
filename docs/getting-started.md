@@ -154,19 +154,14 @@ before a major bump.
 
 ## When something looks wrong
 
-- A source shows `error` on `/debug` — the message there is the failure
-  reason. Most often it is credentials or network reachability.
-- The dashboard is empty — confirm the source's service count on
-  `/debug`, then check tags and filters in the URL.
-- Compass will not start — run with `-c /path/to/compass.yaml` and watch
-  the startup logs; config errors print the offending field.
-
-For more, see [Troubleshooting](troubleshooting.md).
+Open `/debug` for source status and discovered services, check `/metrics` for
+refresh counters, and use logs for startup or source errors. See
+[Operations → Troubleshooting](operations.md#troubleshooting).
 
 ## Next
 
 - [Demo](demo.md): walkthrough of dashboard, pages, and debug views.
 - [Sources](sources.md): every integration's setup and field reference.
 - [Configuration](configuration.md): the full `compass.yaml` field list.
-- [Operations](operations.md): refresh, metrics, SIGHUP, logs.
+- [Operations](operations.md): metrics, logs, and troubleshooting.
 - [Development](development.md): run the dev stack with every source live.

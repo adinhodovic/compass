@@ -1,22 +1,14 @@
 # Operations
 
-Operator-facing surfaces of the running binary: debug page, metrics,
-SIGHUP refresh, and the full HTTP endpoint table.
+Runtime tools for checking Compass: debug, health, metrics, logs, and
+troubleshooting.
 
-## Endpoints
+## Runtime endpoints
 
-| Path                      | Purpose                                                            |
-| ------------------------- | ------------------------------------------------------------------ |
-| `/`                       | Services dashboard, or the configured home page when `home.page` is set. |
-| `/services`               | Services dashboard. Always reachable, regardless of `home`.        |
-| `/services/{id}`          | Per-service detail page (metadata + Grafana panels).               |
-| `/pages/{slug}`           | Top-level markdown pages.                                          |
-| `/pages/{section}/{slug}` | Pages from sub-directories.                                        |
-| `/debug`                  | Per-source health (see below).                                     |
-| `/health`                 | Liveness endpoint. Exempt from auth.                               |
-| `/metrics`                | Prometheus metrics (see below). Exempt from auth.                  |
-| `/manifest.webmanifest`   | PWA manifest with the configured organization logo.                |
-| `/static/*`               | Embedded CSS/JS assets. No CDN, no runtime fetch. Served with `Cache-Control: public, max-age=86400` — release artifacts change with the binary, so a 1-day TTL is safe. |
+The operator-facing endpoints are `/debug`, `/health`, and `/metrics`. The
+dashboard, service detail pages, markdown pages, static assets, and manifest
+are normal UI routes covered in [Getting Started](getting-started.md) and
+[Pages](pages.md).
 
 ## `/debug`
 
@@ -30,7 +22,7 @@ load reported an error, so you don't have to keep `/debug` open to know
 something is unhealthy.
 
 On by default. Set `debug.enabled: false` in `compass.yaml` to suppress
-the route — any request to `/debug` then returns 404.
+the route. Any request to `/debug` then returns 404.
 
 ![Compass debug page showing source health and discovered services](assets/images/debug.png)
 
@@ -68,12 +60,6 @@ time() - compass_source_last_success_timestamp_seconds > 600
 A ServiceMonitor for prometheus-operator ships with the Helm chart;
 enable it with `serviceMonitor.enabled: true`.
 
-## `SIGHUP`
-
-`kill -HUP <pid>` forces every source to re-load immediately, regardless
-of `refresh_interval`. Useful as a Kubernetes preStop hook or when you
-want a manual "pull again now" without waiting for the next tick.
-
 ## Logs
 
 Every HTTP request emits one structured log line: method, path, status,
@@ -84,3 +70,22 @@ responses always log at `error`.
 
 Configure the format and level in `compass.yaml` under
 [`logging:`](configuration.md#logging).
+
+## Troubleshooting
+
+Compass exposes three places to check when something looks wrong:
+
+- `/debug`: per-source status, service counts, last successful load time, raw
+  source errors, and the discovered service table.
+- `/metrics`: scrapeable source refresh counters, refresh duration, service
+  counts, and last-success timestamps.
+- Logs: startup validation errors, source refresh outcomes, HTTP requests, and
+  5xx responses.
+
+Source identities use `<type>/<name>`, for example `kubernetes/cluster`. Use
+that value to match a source across `/debug`, metrics labels, and logs.
+
+### Compass Will Not Start
+
+Config errors are printed during startup and include the field that failed
+validation. For the full config reference, see [Configuration](configuration.md).
