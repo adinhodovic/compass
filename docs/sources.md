@@ -392,7 +392,7 @@ source, as a fallback when no `compass.adinhodovic.com/urls` label is set.
 
 What is matched:
 
-- HTTP routers only — labels of the form
+- HTTP routers only: labels of the form
   `traefik.http.routers.<name>.rule` whose value contains a
   `Host(\`...\`)` clause.
 - Each hostname inside `Host(...)` clauses emits one service. Multi-host
@@ -703,7 +703,7 @@ and the URL:
 
 The dev stack at `deploy/dev/docker-compose.yml` runs Caddy with its
 admin API exposed on `:2019` for exactly this recipe. Caddy's
-admin API is unauthenticated by default — only expose it on a trusted
+admin API is unauthenticated by default. Only expose it on a trusted
 network.
 
 ##### Generic JSON API

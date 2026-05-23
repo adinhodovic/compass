@@ -134,7 +134,7 @@ the source instance:
 
 ![Compass page with service cards and an embedded Grafana panel](assets/images/pages-features.png)
 
-### `[[name]]` — wiki-style auto-links
+### `[[name]]` wiki-style auto-links
 
 `[[grafana]]` or `[[Grafana]]` in prose resolves to a link at
 `/services/grafana`. Matches by ID or display name (case-insensitive).
