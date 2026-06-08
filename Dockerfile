@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1.7
 
-FROM --platform=$BUILDPLATFORM node:24-alpine AS assets
+FROM --platform=$BUILDPLATFORM node:26-alpine AS assets
 
 WORKDIR /app
 
@@ -13,7 +13,7 @@ COPY tools ./tools
 COPY docs/assets/images ./docs/assets/images
 RUN npm run build
 
-FROM --platform=$BUILDPLATFORM golang:1.26-alpine AS builder
+FROM --platform=$BUILDPLATFORM golang:1.26.4-alpine AS builder
 
 RUN apk add --no-cache git ca-certificates tzdata
 
@@ -37,7 +37,7 @@ RUN --mount=type=cache,target=/go/pkg/mod,sharing=locked \
     -ldflags="-s -w -X 'main.version=${VERSION}' -X 'main.commit=${COMMIT}' -X 'main.buildTime=${BUILD_TIME}'" \
     -o compass ./cmd/compass
 
-FROM alpine:3.22
+FROM alpine:3.23.4
 
 RUN apk --no-cache add ca-certificates && \
     addgroup -g 1001 -S compass && \
