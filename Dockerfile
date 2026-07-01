@@ -37,7 +37,7 @@ RUN --mount=type=cache,target=/go/pkg/mod,sharing=locked \
     -ldflags="-s -w -X 'main.version=${VERSION}' -X 'main.commit=${COMMIT}' -X 'main.buildTime=${BUILD_TIME}'" \
     -o compass ./cmd/compass
 
-FROM alpine:3.23.4
+FROM alpine:3.24.1
 
 RUN apk --no-cache add ca-certificates && \
     addgroup -g 1001 -S compass && \
