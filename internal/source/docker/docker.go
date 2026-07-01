@@ -13,8 +13,8 @@ import (
 	"github.com/adinhodovic/compass/internal/compass"
 	"github.com/adinhodovic/compass/internal/config"
 	"github.com/adinhodovic/compass/internal/source/meta"
-	dockercontainer "github.com/docker/docker/api/types/container"
-	"github.com/docker/docker/client"
+	dockercontainer "github.com/moby/moby/api/types/container"
+	"github.com/moby/moby/client"
 )
 
 const (
@@ -37,8 +37,8 @@ type Source struct {
 type dockerClient interface {
 	ContainerList(
 		ctx context.Context,
-		options dockercontainer.ListOptions,
-	) ([]dockercontainer.Summary, error)
+		options client.ContainerListOptions,
+	) (client.ContainerListResult, error)
 }
 
 func New(cfg config.SourceConfig) (Source, error) {
@@ -59,10 +59,7 @@ func New(cfg config.SourceConfig) (Source, error) {
 	if err != nil {
 		return Source{}, err
 	}
-	cli, err := client.NewClientWithOpts(
-		client.WithHost(dockerHost),
-		client.WithAPIVersionNegotiation(),
-	)
+	cli, err := client.New(client.WithHost(dockerHost))
 	if err != nil {
 		return Source{}, fmt.Errorf("source %s: docker client: %w", name, err)
 	}
@@ -113,7 +110,11 @@ func (s Source) Load(ctx context.Context) ([]compass.Service, error) {
 }
 
 func (s Source) listContainers(ctx context.Context) ([]dockercontainer.Summary, error) {
-	return s.client.ContainerList(ctx, dockercontainer.ListOptions{All: s.includeStopped})
+	result, err := s.client.ContainerList(ctx, client.ContainerListOptions{All: s.includeStopped})
+	if err != nil {
+		return nil, err
+	}
+	return result.Items, nil
 }
 
 func (s Source) toService(
