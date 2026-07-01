@@ -59,10 +59,7 @@ func New(cfg config.SourceConfig) (Source, error) {
 	if err != nil {
 		return Source{}, err
 	}
-	cli, err := client.NewClientWithOpts(
-		client.WithHost(dockerHost),
-		client.WithAPIVersionNegotiation(),
-	)
+	cli, err := client.New(client.WithHost(dockerHost))
 	if err != nil {
 		return Source{}, fmt.Errorf("source %s: docker client: %w", name, err)
 	}
