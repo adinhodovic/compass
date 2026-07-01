@@ -7,24 +7,25 @@ import (
 
 	"github.com/adinhodovic/compass/internal/compass"
 	"github.com/adinhodovic/compass/internal/source/meta"
-	dockercontainer "github.com/docker/docker/api/types/container"
+	dockercontainer "github.com/moby/moby/api/types/container"
+	"github.com/moby/moby/client"
 )
 
 type fakeDockerClient struct {
 	containers []dockercontainer.Summary
-	options    dockercontainer.ListOptions
+	options    client.ContainerListOptions
 	err        error
 }
 
 func (m *fakeDockerClient) ContainerList(
 	_ context.Context,
-	options dockercontainer.ListOptions,
-) ([]dockercontainer.Summary, error) {
+	options client.ContainerListOptions,
+) (client.ContainerListResult, error) {
 	m.options = options
 	if m.err != nil {
-		return nil, m.err
+		return client.ContainerListResult{}, m.err
 	}
-	return m.containers, nil
+	return client.ContainerListResult{Items: m.containers}, nil
 }
 
 func newTestSource(autoDiscover, includeStopped bool, c dockerClient) Source {
