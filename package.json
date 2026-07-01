@@ -12,14 +12,14 @@
     "@tailwindcss/typography": "^0.5.0",
     "alpinejs": "^3.14.0",
     "daisyui": "^5.0.0",
-    "fuse.js": "^7.0.0",
+    "fuse.js": "^7.4.2",
     "htmx.org": "^2.0.0",
     "iconify-icon": "^3.0.0",
     "mermaid": "^11.15.0",
     "tailwindcss": "^4.0.0"
   },
   "devDependencies": {
-    "@playwright/test": "^1.60.0",
+    "@playwright/test": "^1.61.0",
     "esbuild": "^0.28.0"
   }
 }
