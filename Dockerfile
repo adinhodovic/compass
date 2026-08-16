@@ -13,7 +13,7 @@ COPY tools ./tools
 COPY docs/assets/images ./docs/assets/images
 RUN npm run build
 
-FROM --platform=$BUILDPLATFORM golang:1.26.4-alpine AS builder
+FROM --platform=$BUILDPLATFORM golang:1.26.6-alpine AS builder
 
 RUN apk add --no-cache git ca-certificates tzdata
 
