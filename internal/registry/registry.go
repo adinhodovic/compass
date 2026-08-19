@@ -40,8 +40,9 @@ type Registry struct {
 	filters     Filters
 	loadTimeout time.Duration
 
-	services atomic.Pointer[[]compass.Service]
-	dropped  atomic.Pointer[[]DroppedService]
+	services     atomic.Pointer[[]compass.Service]
+	dropped      atomic.Pointer[[]DroppedService]
+	explanations atomic.Pointer[[]ServiceExplanation]
 }
 
 // Filters narrows the aggregated service list. Applied after every source
@@ -83,8 +84,9 @@ type entryState struct {
 	// services holds this source's last successful normalized services.
 	// Stored as *[]compass.Service so we can swap atomically without
 	// per-read locking.
-	services atomic.Pointer[[]compass.Service]
-	dropped  atomic.Pointer[[]DroppedService]
+	services     atomic.Pointer[[]compass.Service]
+	dropped      atomic.Pointer[[]DroppedService]
+	explanations atomic.Pointer[[]ServiceExplanation]
 	// lastErr stores the most recent load error's message, or nil when
 	// the last load succeeded. atomic.Pointer[string] avoids a mutex
 	// while keeping snapshot reads lock-free.
@@ -226,11 +228,22 @@ type SourceStatus struct {
 // the published dashboard snapshot. It powers /debug explanations without
 // treating expected filtering as source errors.
 type DroppedService struct {
+	ID         string
 	Name       string
 	URL        string
 	Source     string
 	SourceType string
 	Reason     string
+}
+
+// ServiceExplanation records registry decisions that made a discovered
+// service publishable. It intentionally contains only safe, operator-useful
+// details; source metadata is not copied here.
+type ServiceExplanation struct {
+	ID         string
+	Source     string
+	SourceType string
+	Steps      []string
 }
 
 // SourceID returns the canonical "<type>/<name>" identifier for grouping.
@@ -285,16 +298,19 @@ func (r *Registry) refreshEntry(ctx context.Context, e *entryState) error {
 	}
 	out := make([]compass.Service, 0, len(loaded))
 	dropped := make([]DroppedService, 0)
+	explanations := make([]ServiceExplanation, 0, len(loaded))
 	for _, service := range loaded {
-		service, drop, ok := r.normalize(service, e.src.Name(), e.src.Type())
+		service, drop, explanation, ok := r.normalizeWithExplanation(service, e.src.Name(), e.src.Type())
 		if ok {
 			out = append(out, service)
+			explanations = append(explanations, explanation)
 		} else if drop.Reason != "" {
 			dropped = append(dropped, drop)
 		}
 	}
 	e.services.Store(&out)
 	e.dropped.Store(&dropped)
+	e.explanations.Store(&explanations)
 	e.lastErr.Store(nil)
 	metrics.ObserveSourceRefresh(sourceMetricLabel(e.src), len(out), time.Since(start), nil)
 	r.logSource(ctx, slog.LevelInfo, "Source load complete", e.src, slog.Int("services", len(out)))
@@ -320,21 +336,42 @@ func (e *entryState) droppedSnapshot() []DroppedService {
 	return nil
 }
 
+func (e *entryState) explanationSnapshot() []ServiceExplanation {
+	if p := e.explanations.Load(); p != nil {
+		return cloneExplanations(*p)
+	}
+	return nil
+}
+
 // aggregate snapshots every entry's last known services into the shared
 // atomic pointer. Lock-free thanks to per-entry atomic.Pointer.
 func (r *Registry) aggregate() []compass.Service {
 	var combined []compass.Service
 	var dropped []DroppedService
+	var explanations []ServiceExplanation
 	for _, e := range r.entries {
 		combined = append(combined, e.snapshot()...)
 		dropped = append(dropped, e.droppedSnapshot()...)
+		explanations = append(explanations, e.explanationSnapshot()...)
 	}
 	combined, filterDropped := applyFiltersWithDropped(combined, r.filters)
 	dropped = append(dropped, filterDropped...)
+	if len(filterDropped) > 0 {
+		droppedIDs := make(map[string]struct{}, len(filterDropped))
+		for _, service := range filterDropped {
+			droppedIDs[service.ID] = struct{}{}
+		}
+		explanations = slices.DeleteFunc(explanations, func(explanation ServiceExplanation) bool {
+			_, dropped := droppedIDs[explanation.ID]
+			return dropped
+		})
+	}
 	Sort(combined)
 	SortDropped(dropped)
+	SortExplanations(explanations)
 	r.services.Store(&combined)
 	r.dropped.Store(&dropped)
+	r.explanations.Store(&explanations)
 	return combined
 }
 
@@ -343,6 +380,15 @@ func (r *Registry) aggregate() []compass.Service {
 func (r *Registry) DroppedServices() []DroppedService {
 	if p := r.dropped.Load(); p != nil {
 		return cloneDroppedServices(*p)
+	}
+	return nil
+}
+
+// DiscoveryExplanations returns the current registry normalization decisions.
+// Safe for concurrent use.
+func (r *Registry) DiscoveryExplanations() []ServiceExplanation {
+	if p := r.explanations.Load(); p != nil {
+		return cloneExplanations(*p)
 	}
 	return nil
 }
@@ -421,6 +467,7 @@ func applyFiltersWithDropped(
 
 func droppedFromService(service compass.Service, reason string) DroppedService {
 	return DroppedService{
+		ID:         service.ID,
 		Name:       service.Name,
 		URL:        service.URL,
 		Source:     service.Source,
@@ -535,11 +582,29 @@ func SortDropped(services []DroppedService) {
 	})
 }
 
+func SortExplanations(explanations []ServiceExplanation) {
+	slices.SortStableFunc(explanations, func(a, b ServiceExplanation) int {
+		return cmp.Compare(a.ID, b.ID)
+	})
+}
+
 func cloneDroppedServices(services []DroppedService) []DroppedService {
 	if services == nil {
 		return nil
 	}
 	return append([]DroppedService(nil), services...)
+}
+
+func cloneExplanations(explanations []ServiceExplanation) []ServiceExplanation {
+	if explanations == nil {
+		return nil
+	}
+	out := make([]ServiceExplanation, len(explanations))
+	for i, explanation := range explanations {
+		out[i] = explanation
+		out[i].Steps = append([]string(nil), explanation.Steps...)
+	}
+	return out
 }
 
 func Group(services []compass.Service, mode string) map[string][]compass.Service {
@@ -568,7 +633,17 @@ func (r *Registry) normalize(
 	fallbackSource string,
 	fallbackType string,
 ) (compass.Service, DroppedService, bool) {
+	normalized, dropped, _, ok := r.normalizeWithExplanation(service, fallbackSource, fallbackType)
+	return normalized, dropped, ok
+}
+
+func (r *Registry) normalizeWithExplanation(
+	service compass.Service,
+	fallbackSource string,
+	fallbackType string,
+) (compass.Service, DroppedService, ServiceExplanation, bool) {
 	drop := DroppedService{
+		ID:         strings.TrimSpace(service.ID),
 		Name:       strings.TrimSpace(service.Name),
 		URL:        strings.TrimSpace(service.URL),
 		Source:     fallbackSource,
@@ -585,8 +660,9 @@ func (r *Registry) normalize(
 	service.PrimaryTag = strings.TrimSpace(service.PrimaryTag)
 	if service.Name == "" {
 		drop.Reason = "missing name"
-		return compass.Service{}, drop, false
+		return compass.Service{}, drop, ServiceExplanation{}, false
 	}
+	originalURL := service.URL
 	service.URL = meta.WithScheme(service.URL, "https")
 	if normalizedURL, ok := meta.ValidHTTPURL(service.URL); ok {
 		service.URL = normalizedURL
@@ -594,7 +670,7 @@ func (r *Registry) normalize(
 		drop.Name = service.Name
 		drop.URL = service.URL
 		drop.Reason = "invalid URL"
-		return compass.Service{}, drop, false
+		return compass.Service{}, drop, ServiceExplanation{}, false
 	}
 	if service.Source == "" {
 		service.Source = fallbackSource
@@ -604,35 +680,72 @@ func (r *Registry) normalize(
 	}
 	drop.Source = service.Source
 	drop.SourceType = service.SourceType
+	explanation := ServiceExplanation{
+		Source:     service.Source,
+		SourceType: service.SourceType,
+		Steps:      []string{"Accepted and published"},
+	}
+	if strings.TrimSpace(originalURL) != service.URL {
+		explanation.Steps = append(explanation.Steps, "URL normalized")
+	}
 	if service.ID == "" {
 		service.ID = slug.Make(service.SourceType + "-" + service.Source + "-" + service.Name)
+		explanation.Steps = append(explanation.Steps, "ID generated from source and name")
 	}
+	drop.ID = service.ID
+	explanation.ID = service.ID
 	if service.Metadata == nil {
 		service.Metadata = map[string]any{}
 	}
 	if r.catalog != nil {
 		if entry, ok := r.catalog.Lookup(service.Name); ok {
+			var catalogFields []string
 			if service.Description == "" {
 				service.Description = entry.Description
+				if entry.Description != "" {
+					catalogFields = append(catalogFields, "description")
+				}
 			}
 			if service.Icon == "" {
 				service.Icon = entry.Icon
+				if entry.Icon != "" {
+					catalogFields = append(catalogFields, "icon")
+				}
 			}
 			if service.PrimaryTag == "" && len(service.Tags) == 0 {
 				service.PrimaryTag = entry.PrimaryTag
+				if entry.PrimaryTag != "" {
+					catalogFields = append(catalogFields, "primary tag")
+				}
 			}
 			if len(service.Tags) == 0 && len(entry.Tags) > 0 {
 				service.Tags = append([]string(nil), entry.Tags...)
+				catalogFields = append(catalogFields, "tags")
+			}
+			if len(catalogFields) > 0 {
+				explanation.Steps = append(explanation.Steps, "Catalog filled "+strings.Join(catalogFields, ", "))
 			}
 		}
 	}
+	originalTags := append([]string(nil), service.Tags...)
 	service.Tags = normalizePrimaryTag(service.PrimaryTag, service.Tags)
 	if service.PrimaryTag == "" && len(service.Tags) > 0 {
 		service.PrimaryTag = service.Tags[0]
 	}
+	if !slices.Equal(originalTags, service.Tags) {
+		explanation.Steps = append(explanation.Steps, "Tags normalized")
+	}
+	originalLinks := len(service.Links)
 	service.Links = validLinks(service.Links)
+	if len(service.Links) != originalLinks {
+		explanation.Steps = append(explanation.Steps, fmt.Sprintf("Removed %d invalid link(s)", originalLinks-len(service.Links)))
+	}
+	originalPanels := len(service.Panels)
 	service.Panels = validPanels(service.Panels, service)
-	return service, DroppedService{}, true
+	if len(service.Panels) != originalPanels {
+		explanation.Steps = append(explanation.Steps, fmt.Sprintf("Removed %d invalid panel(s)", originalPanels-len(service.Panels)))
+	}
+	return service, DroppedService{}, explanation, true
 }
 
 func validLinks(links []compass.Link) []compass.Link {

@@ -15,7 +15,10 @@ and [Pages](pages.md).
 A per-source health view. For every configured source it shows a
 status badge (`ok` / `error` / `pending`), the service count and last
 load time, the discovery output as a table, and the error message when
-the last refresh failed.
+the last refresh failed. Published services include a **Why included**
+section that explains registry decisions such as URL normalization, generated
+IDs, catalog backfills, and invalid link or panel removal. Dropped services
+show the validation or filter reason that removed them.
 
 The navbar bug icon shows a small red dot whenever any source's last
 load reported an error, so you don't have to keep `/debug` open to know
