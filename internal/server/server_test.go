@@ -280,8 +280,20 @@ func TestServerHealthBypassesAuth(t *testing.T) {
 
 func TestAPIServicesReturnsAccessFilteredRegistry(t *testing.T) {
 	provider := staticProvider{
-		{ID: "public", Name: "Public", URL: "https://public.local", Source: "manual", SourceType: compass.SourceTypeStatic},
-		{ID: "private", Name: "Private", URL: "https://private.local", Source: "private", SourceType: compass.SourceTypeStatic},
+		{
+			ID:         "public",
+			Name:       "Public",
+			URL:        "https://public.local",
+			Source:     "manual",
+			SourceType: compass.SourceTypeStatic,
+		},
+		{
+			ID:         "private",
+			Name:       "Private",
+			URL:        "https://private.local",
+			Source:     "private",
+			SourceType: compass.SourceTypeStatic,
+		},
 	}
 	handler := New(config.Config{
 		Auth: config.AuthConfig{GroupsHeader: "X-Forwarded-Groups"},
