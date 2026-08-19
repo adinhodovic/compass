@@ -101,7 +101,10 @@ jobs:
           go test ./... -v
 
       - name: Install Playwright browser
-        run: npx playwright install --with-deps chromium
+        # GitHub-hosted Ubuntu images already provide Chromium's system
+        # dependencies. Avoid --with-deps here: its apt phase can hang while
+        # the browser cache is already available.
+        run: npx playwright install chromium
 
       - name: Run e2e tests
         run: make test-e2e
