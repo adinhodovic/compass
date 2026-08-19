@@ -249,6 +249,7 @@ func TestHomeRendersSpecificActionLabels(t *testing.T) {
 		`data-service-name="Grafana"`,
 		`? 'Unpin ' : 'Pin '`,
 		`aria-label="Copy Grafana URL"`,
+		`aria-label="Copy dashboard view link"`,
 	} {
 		if !strings.Contains(body, want) {
 			t.Fatalf("expected home to contain %q, got %q", want, body)

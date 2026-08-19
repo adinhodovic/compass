@@ -63,7 +63,6 @@ export function compassHome() {
         recents: 'compass-recents:' + userKey,
         filters: 'compass-filters:' + userKey,
         collapsed: 'compass-collapsed:' + userKey,
-        sort: 'compass-sort:' + userKey,
       };
       this.favorites = safeJSONParse(storageGet(this.storage.favorites), []);
       this.recents = safeJSONParse(storageGet(this.storage.recents), []);
@@ -77,9 +76,9 @@ export function compassHome() {
         ? sourceParam.split(',').filter(Boolean)
         : (stored.sources || (stored.source ? [stored.source] : []));
       this.collapsedGroups = safeJSONParse(storageGet(this.storage.collapsed), {});
-      const storedSort = storageGet(this.storage.sort);
-      this.sortMode = COMPASS_SORT_MODES.includes(storedSort) ? storedSort : 'name';
-      this.$watch('sortMode', (v) => storageSet(this.storage.sort, v));
+      const sortParam = url.searchParams.get('sort');
+      this.sortMode = COMPASS_SORT_MODES.includes(sortParam) ? sortParam : 'name';
+      this.$watch('sortMode', () => { this.syncURL(); });
       this.$watch('q', () => { this.resetGroupShown(); this.groupsPage = 1; this.persistFilters(); this.syncURL(); });
       this.$watch('tags', () => { this.resetGroupShown(); this.groupsPage = 1; this.persistFilters(); this.syncURL(); });
       this.$watch('sources', () => { this.resetGroupShown(); this.groupsPage = 1; this.persistFilters(); this.syncURL(); });
@@ -100,6 +99,7 @@ export function compassHome() {
       set('q', this.q);
       set('tags', this.tags.join(','));
       set('source', this.sources.join(','));
+      set('sort', this.sortMode === 'name' ? '' : this.sortMode);
       history.replaceState(null, '', url);
     },
     setGroupBy(value) {
