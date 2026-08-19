@@ -88,7 +88,10 @@
             <span x-show="q || tags.length || sources.length" x-text="visibleCount() + ' of '"></span>{{len .Services}} service{{if ne (len .Services) 1}}s{{end}}
           </p>
         </div>
-        <button class="btn btn-ghost btn-sm shrink-0" type="button" x-on:click="resetFilters()" x-show="q || tags.length || sources.length">{{icon "lucide:x"}}Clear all</button>
+        <div class="flex shrink-0 items-center gap-1">
+          <button class="btn btn-ghost btn-sm" type="button" x-on:click="copy(window.location.href)" aria-label="Copy dashboard view link">{{icon "lucide:link"}}<span class="hidden sm:inline">Share view</span></button>
+          <button class="btn btn-ghost btn-sm" type="button" x-on:click="resetFilters()" x-show="q || tags.length || sources.length">{{icon "lucide:x"}}Clear all</button>
+        </div>
       </div>
       <label class="input w-full mt-4" for="service-search">
         <span class="sr-only">Search services</span>
