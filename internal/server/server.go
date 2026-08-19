@@ -36,6 +36,7 @@ type ServiceProvider interface {
 	Services() []compass.Service
 	SourceStatuses() []registry.SourceStatus
 	DroppedServices() []registry.DroppedService
+	DiscoveryExplanations() []registry.ServiceExplanation
 }
 
 type Server struct {
@@ -133,7 +134,8 @@ type debugData struct {
 	Base
 	Statuses      []registry.SourceStatus
 	Groups        map[string][]compass.Service // keyed by source name
-	AccessGroups  map[string][]string          // keyed by source ID
+	Explanations  map[string]registry.ServiceExplanation
+	AccessGroups  map[string][]string // keyed by source ID
 	Dropped       []registry.DroppedService
 	DroppedGroups map[string][]registry.DroppedService
 }
@@ -522,15 +524,23 @@ func (s Server) debug(w http.ResponseWriter, r *http.Request) {
 	base := s.baseData(r)
 	base.Services = s.provider.Services()
 	dropped := s.provider.DroppedServices()
+	explanations := s.provider.DiscoveryExplanations()
 	statuses := s.provider.SourceStatuses()
 	base.HasSourceErrors = sourceStatusesHaveErrors(statuses)
 	s.render(w, "debug", debugData{
 		Base:          base,
 		Statuses:      statuses,
 		Groups:        registry.Group(base.Services, compass.GroupBySource),
+		Explanations:  explanationMap(explanations),
 		AccessGroups:  s.sourceAccess,
 		Dropped:       dropped,
 		DroppedGroups: groupDroppedServices(dropped),
+	})
+}
+
+func explanationMap(explanations []registry.ServiceExplanation) map[string]registry.ServiceExplanation {
+	return lo.Associate(explanations, func(explanation registry.ServiceExplanation) (string, registry.ServiceExplanation) {
+		return explanation.ID, explanation
 	})
 }
 
