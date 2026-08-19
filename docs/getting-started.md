@@ -105,8 +105,10 @@ Browse to `http://localhost:8080/`.
 - Open `/debug` to see source health and the raw service data.
 - Open `/metrics` to scrape Compass with Prometheus.
 
-Filter, sort, and group state lives in the URL, so any view can be shared
-as a link.
+Filter, sort, and group state lives in the URL, so any view can be shared as a
+link. Use **Share view** above the filters to copy the current dashboard URL.
+Pinned services, recent services, and collapsed groups are personal browser
+state and are not included in shared links.
 
 ## Add more sources
 
