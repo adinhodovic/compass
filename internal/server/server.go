@@ -138,6 +138,10 @@ type debugData struct {
 	DroppedGroups map[string][]registry.DroppedService
 }
 
+type servicesAPIResponse struct {
+	Services []compass.Service `json:"services"`
+}
+
 func New(
 	cfg config.Config,
 	provider ServiceProvider,
@@ -188,6 +192,7 @@ func New(
 	mux.HandleFunc("/services/", s.detail)
 	mux.HandleFunc("/pages/", s.page)
 	mux.HandleFunc("/health", s.health)
+	mux.HandleFunc("/api/services", s.apiServices)
 	mux.HandleFunc("/manifest.webmanifest", s.manifest)
 	if cfg.Debug.IsEnabled() {
 		mux.HandleFunc("/debug", s.debug)
@@ -236,6 +241,26 @@ func (s Server) health(w http.ResponseWriter, _ *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("Cache-Control", "no-store")
 	_, _ = w.Write([]byte(`{"status":"ok"}` + "\n"))
+}
+
+func (s Server) apiServices(w http.ResponseWriter, r *http.Request) {
+	if r.URL.Path != "/api/services" {
+		http.NotFound(w, r)
+		return
+	}
+	if r.Method != http.MethodGet && r.Method != http.MethodHead {
+		w.Header().Set("Allow", http.MethodGet+", "+http.MethodHead)
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	w.Header().Set("Cache-Control", "no-store")
+	if r.Method == http.MethodHead {
+		return
+	}
+	_ = json.NewEncoder(w).Encode(servicesAPIResponse{
+		Services: s.visibleServicesFor(r),
+	})
 }
 
 // metricsMiddleware records request count + duration against the

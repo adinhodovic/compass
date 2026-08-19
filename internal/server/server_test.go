@@ -278,6 +278,74 @@ func TestServerHealthBypassesAuth(t *testing.T) {
 	}
 }
 
+func TestAPIServicesReturnsAccessFilteredRegistry(t *testing.T) {
+	provider := staticProvider{
+		{ID: "public", Name: "Public", URL: "https://public.local", Source: "manual", SourceType: compass.SourceTypeStatic},
+		{ID: "private", Name: "Private", URL: "https://private.local", Source: "private", SourceType: compass.SourceTypeStatic},
+	}
+	handler := New(config.Config{
+		Auth: config.AuthConfig{GroupsHeader: "X-Forwarded-Groups"},
+		Services: config.ServicesConfig{Sources: []config.SourceConfig{{
+			Type:   compass.SourceTypeStatic,
+			Name:   "private",
+			Access: config.SourceAccessConfig{RequiredGroups: []string{"admins"}},
+		}}},
+	}, provider, discardLogger())
+
+	request := func(groups string) servicesAPIResponse {
+		req := httptest.NewRequest(http.MethodGet, "/api/services", nil)
+		if groups != "" {
+			req.Header.Set("X-Forwarded-Groups", groups)
+		}
+		resp := httptest.NewRecorder()
+		handler.ServeHTTP(resp, req)
+		if resp.Code != http.StatusOK {
+			t.Fatalf("expected /api/services to render 200, got %d", resp.Code)
+		}
+		if got := resp.Header().Get("Cache-Control"); got != "no-store" {
+			t.Fatalf("expected no-store cache control, got %q", got)
+		}
+		var body servicesAPIResponse
+		if err := json.NewDecoder(resp.Body).Decode(&body); err != nil {
+			t.Fatalf("decode API response: %v", err)
+		}
+		return body
+	}
+
+	if body := request(""); len(body.Services) != 1 || body.Services[0].ID != "public" {
+		t.Fatalf("expected only public service, got %#v", body.Services)
+	}
+	if body := request("admins"); len(body.Services) != 2 {
+		t.Fatalf("expected both services for admins, got %#v", body.Services)
+	}
+}
+
+func TestAPIServicesRequiresNormalAuth(t *testing.T) {
+	handler := New(config.Config{Auth: config.AuthConfig{
+		Required:   true,
+		UserHeader: "X-Forwarded-User",
+	}}, staticProvider{}, discardLogger())
+	req := httptest.NewRequest(http.MethodGet, "/api/services", nil)
+	resp := httptest.NewRecorder()
+	handler.ServeHTTP(resp, req)
+	if resp.Code != http.StatusUnauthorized {
+		t.Fatalf("expected /api/services to require auth, got %d", resp.Code)
+	}
+}
+
+func TestAPIServicesRejectsWriteMethods(t *testing.T) {
+	handler := New(config.Config{}, staticProvider{}, discardLogger())
+	req := httptest.NewRequest(http.MethodPost, "/api/services", nil)
+	resp := httptest.NewRecorder()
+	handler.ServeHTTP(resp, req)
+	if resp.Code != http.StatusMethodNotAllowed {
+		t.Fatalf("expected /api/services POST to return 405, got %d", resp.Code)
+	}
+	if got := resp.Header().Get("Allow"); got != "GET, HEAD" {
+		t.Fatalf("expected GET, HEAD Allow header, got %q", got)
+	}
+}
+
 func TestDebugRouteDisabledReturns404(t *testing.T) {
 	off := false
 	handler := New(
