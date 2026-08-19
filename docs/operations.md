@@ -5,10 +5,10 @@ troubleshooting.
 
 ## Runtime endpoints
 
-The operator-facing endpoints are `/debug`, `/health`, and `/metrics`. The
-dashboard, service detail pages, markdown pages, static assets, and manifest
-are normal UI routes covered in [Getting Started](getting-started.md) and
-[Pages](pages.md).
+The operator-facing endpoints are `/debug`, `/health`, `/metrics`, and
+`/api/services`. The dashboard, service detail pages, markdown pages, static
+assets, and manifest are normal UI routes covered in [Getting Started](getting-started.md)
+and [Pages](pages.md).
 
 ## `/debug`
 
@@ -31,6 +31,30 @@ the route. Any request to `/debug` then returns 404.
 Liveness endpoint for load balancers and orchestrators. Returns HTTP 200
 with `{"status":"ok"}` and is unauthenticated regardless of the configured
 auth mode.
+
+## `/api/services`
+
+`GET /api/services` returns the current normalized service registry as JSON:
+
+```json
+{
+  "services": [
+    {
+      "id": "static-manual-grafana",
+      "name": "Grafana",
+      "url": "https://grafana.example.com",
+      "source": "manual",
+      "source_type": "static",
+      "tags": ["monitoring"]
+    }
+  ]
+}
+```
+
+The endpoint uses normal Compass authentication and source access rules. It
+returns only services visible to the current caller, and it does not expose
+dropped services or raw source credentials. Responses use `Cache-Control:
+no-store` because discovery data can change between refreshes.
 
 ## `/metrics`
 
