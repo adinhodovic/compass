@@ -2,6 +2,7 @@ package registry
 
 import (
 	"context"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -255,6 +256,13 @@ func TestRegistryDroppedServicesIncludesNormalizationAndFilters(t *testing.T) {
 	if len(loaded) != 1 || loaded[0].Name != "Concrete" {
 		t.Fatalf("expected only Concrete to load, got %#v", loaded)
 	}
+	explanations := reg.DiscoveryExplanations()
+	if len(explanations) != 1 || explanations[0].ID != loaded[0].ID {
+		t.Fatalf("expected explanation for published service, got %#v", explanations)
+	}
+	if len(explanations[0].Steps) == 0 || explanations[0].Steps[0] != "Accepted and published" {
+		t.Fatalf("expected accepted explanation, got %#v", explanations[0].Steps)
+	}
 	dropped := reg.DroppedServices()
 	want := map[string]string{
 		"":         "missing name",
@@ -273,6 +281,42 @@ func TestRegistryDroppedServicesIncludesNormalizationAndFilters(t *testing.T) {
 	dropped[0].Reason = "mutated"
 	if reg.DroppedServices()[0].Reason == "mutated" {
 		t.Fatal("DroppedServices did not return a copy")
+	}
+}
+
+func TestNormalizeExplanationReportsRegistryDecisions(t *testing.T) {
+	reg := &Registry{catalog: catalog.DB{
+		"grafana": {
+			Description: "Dashboards.",
+			Icon:        "simple-icons:grafana",
+			Tags:        []string{"monitoring"},
+		},
+	}}
+
+	service, _, explanation, ok := reg.normalizeWithExplanation(compass.Service{
+		Name:   "Grafana",
+		URL:    "grafana.local",
+		Links:  []compass.Link{{Label: "bad", URL: "ftp://grafana.local"}},
+		Panels: []compass.Panel{{Title: "bad", URL: "ftp://grafana.local/panel"}},
+	}, "manual", compass.SourceTypeStatic)
+	if !ok {
+		t.Fatal("expected service to normalize")
+	}
+	if explanation.ID != service.ID {
+		t.Fatalf("expected explanation ID %q, got %q", service.ID, explanation.ID)
+	}
+	want := []string{
+		"Accepted and published",
+		"URL normalized",
+		"ID generated from source and name",
+		"Catalog filled description, icon, tags",
+		"Removed 1 invalid link(s)",
+		"Removed 1 invalid panel(s)",
+	}
+	for _, step := range want {
+		if !slices.Contains(explanation.Steps, step) {
+			t.Fatalf("expected explanation step %q, got %#v", step, explanation.Steps)
+		}
 	}
 }
 
