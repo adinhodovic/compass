@@ -362,7 +362,15 @@ func serviceFromRoute(
 		metadata["parent_refs"] = parentRefs
 	}
 
-	id := fmt.Sprintf("%s/%s/%s", kind, item.GetNamespace(), item.GetName())
+	// Include the configured source name so identical resources from separate
+	// clusters remain addressable independently.
+	id := fmt.Sprintf(
+		"kubernetes/%s/%s/%s/%s",
+		sourceName,
+		kind,
+		item.GetNamespace(),
+		item.GetName(),
+	)
 	switch {
 	case endpoint.IDSuffix != "":
 		id += "/" + endpoint.IDSuffix

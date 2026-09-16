@@ -199,7 +199,7 @@ func TestKubernetesRouteCreatesServicePerHostname(t *testing.T) {
 	if services[0].Name != "apps · example.com" || services[0].URL != "https://example.com" {
 		t.Fatalf("unexpected first hostname service: %#v", services[0])
 	}
-	if services[1].ID != "HTTPRoute/apps/apps/alt.example.com" {
+	if services[1].ID != "kubernetes/cluster/HTTPRoute/apps/apps/alt.example.com" {
 		t.Fatalf("expected hostname in service ID, got %q", services[1].ID)
 	}
 	hostnames, ok := services[2].Metadata["hostnames"].([]string)
@@ -208,6 +208,29 @@ func TestKubernetesRouteCreatesServicePerHostname(t *testing.T) {
 	}
 	if services[2].Metadata["parent_refs"] == nil {
 		t.Fatalf("expected parent refs metadata: %#v", services[2].Metadata)
+	}
+}
+
+func TestKubernetesRouteIDsIncludeSourceName(t *testing.T) {
+	item := unstructured.Unstructured{Object: map[string]any{
+		"apiVersion": "gateway.networking.k8s.io/v1",
+		"kind":       "HTTPRoute",
+		"metadata": map[string]any{
+			"name":      "monitoring",
+			"namespace": "monitoring",
+		},
+		"spec": map[string]any{"hostnames": []any{"monitoring.example.com"}},
+	}}
+	route := defaultRouteResources()[0]
+	endpoint := routeEndpoints(item, route)[0]
+
+	first := serviceFromRoute("cluster-a", item, route, endpoint)
+	second := serviceFromRoute("cluster-b", item, route, endpoint)
+	if first.ID == second.ID {
+		t.Fatalf("expected source-specific IDs, both got %q", first.ID)
+	}
+	if first.ID != "kubernetes/cluster-a/HTTPRoute/monitoring/monitoring" {
+		t.Fatalf("unexpected source-specific ID: %q", first.ID)
 	}
 }
 
