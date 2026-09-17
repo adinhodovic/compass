@@ -33,9 +33,10 @@ type debugProvider struct {
 	explanations []registry.ServiceExplanation
 }
 
-func (p debugProvider) Services() []compass.Service                          { return p.services }
-func (p debugProvider) SourceStatuses() []registry.SourceStatus              { return p.statuses }
-func (p debugProvider) DroppedServices() []registry.DroppedService           { return p.dropped }
+func (p debugProvider) Services() []compass.Service                { return p.services }
+func (p debugProvider) SourceStatuses() []registry.SourceStatus    { return p.statuses }
+func (p debugProvider) DroppedServices() []registry.DroppedService { return p.dropped }
+
 func (p debugProvider) DiscoveryExplanations() []registry.ServiceExplanation { return p.explanations }
 
 func TestServerRendersHomeAndDetail(t *testing.T) {

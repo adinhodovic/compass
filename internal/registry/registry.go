@@ -300,7 +300,11 @@ func (r *Registry) refreshEntry(ctx context.Context, e *entryState) error {
 	dropped := make([]DroppedService, 0)
 	explanations := make([]ServiceExplanation, 0, len(loaded))
 	for _, service := range loaded {
-		service, drop, explanation, ok := r.normalizeWithExplanation(service, e.src.Name(), e.src.Type())
+		service, drop, explanation, ok := r.normalizeWithExplanation(
+			service,
+			e.src.Name(),
+			e.src.Type(),
+		)
 		if ok {
 			out = append(out, service)
 			explanations = append(explanations, explanation)
@@ -723,7 +727,10 @@ func (r *Registry) normalizeWithExplanation(
 				catalogFields = append(catalogFields, "tags")
 			}
 			if len(catalogFields) > 0 {
-				explanation.Steps = append(explanation.Steps, "Catalog filled "+strings.Join(catalogFields, ", "))
+				explanation.Steps = append(
+					explanation.Steps,
+					"Catalog filled "+strings.Join(catalogFields, ", "),
+				)
 			}
 		}
 	}
@@ -738,12 +745,18 @@ func (r *Registry) normalizeWithExplanation(
 	originalLinks := len(service.Links)
 	service.Links = validLinks(service.Links)
 	if len(service.Links) != originalLinks {
-		explanation.Steps = append(explanation.Steps, fmt.Sprintf("Removed %d invalid link(s)", originalLinks-len(service.Links)))
+		explanation.Steps = append(
+			explanation.Steps,
+			fmt.Sprintf("Removed %d invalid link(s)", originalLinks-len(service.Links)),
+		)
 	}
 	originalPanels := len(service.Panels)
 	service.Panels = validPanels(service.Panels, service)
 	if len(service.Panels) != originalPanels {
-		explanation.Steps = append(explanation.Steps, fmt.Sprintf("Removed %d invalid panel(s)", originalPanels-len(service.Panels)))
+		explanation.Steps = append(
+			explanation.Steps,
+			fmt.Sprintf("Removed %d invalid panel(s)", originalPanels-len(service.Panels)),
+		)
 	}
 	return service, DroppedService{}, explanation, true
 }

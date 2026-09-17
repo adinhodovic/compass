@@ -538,10 +538,15 @@ func (s Server) debug(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-func explanationMap(explanations []registry.ServiceExplanation) map[string]registry.ServiceExplanation {
-	return lo.Associate(explanations, func(explanation registry.ServiceExplanation) (string, registry.ServiceExplanation) {
-		return explanation.ID, explanation
-	})
+func explanationMap(
+	explanations []registry.ServiceExplanation,
+) map[string]registry.ServiceExplanation {
+	return lo.Associate(
+		explanations,
+		func(explanation registry.ServiceExplanation) (string, registry.ServiceExplanation) {
+			return explanation.ID, explanation
+		},
+	)
 }
 
 func sourceAccessGroups(sources []config.SourceConfig) map[string][]string {
