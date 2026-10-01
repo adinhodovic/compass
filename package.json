@@ -10,16 +10,16 @@
   "dependencies": {
     "@tailwindcss/cli": "^4.3.0",
     "@tailwindcss/typography": "^0.5.0",
-    "alpinejs": "^3.16.2",
+    "alpinejs": "^3.17.3",
     "daisyui": "^5.7.14",
     "fuse.js": "^7.5.0",
-    "htmx.org": "^2.0.0",
+    "htmx.org": "^4.0.0",
     "iconify-icon": "^3.0.0",
-    "mermaid": "^11.16.1",
+    "mermaid": "^12.0.0",
     "tailwindcss": "^4.0.0"
   },
   "devDependencies": {
-    "@playwright/test": "^1.62.1",
+    "@playwright/test": "^1.63.0",
     "esbuild": "^0.28.1"
   }
 }
