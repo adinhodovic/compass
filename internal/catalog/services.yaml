@@ -10,6 +10,9 @@ alertmanager:
 alloy:
   description: Telemetry collector for traces, logs, metrics, and profiles, distributed by Grafana.
   icon: dashboardicons:alloy
+airsonic:
+  description: Airsonic is a free, web-based media streamer, providing ubiquitous access to your music.
+  icon: dashboardicons:airsonic
 archivebox:
   description: Self-hosted web archive for capturing and saving snapshots of pages.
   icon: dashboardicons:archivebox
@@ -19,18 +22,27 @@ argo-cd:
 argo-workflows:
   description: Kubernetes-native workflow engine for orchestrating parallel jobs and pipelines.
   icon: dashboardicons:argo-cd
+asciinema:
+  description: asciinema is a suite of tools for recording, replaying, and sharing terminal sessions.
+  icon: dashboardicons:asciinema
 atuin:
   description: Encrypted shell history sync, search, and backup across machines.
   icon: dashboardicons:atuin
 audiobookshelf:
   description: Self-hosted audiobook and podcast server with mobile apps.
   icon: dashboardicons:audiobookshelf
+authelia:
+  description: Authentication and authorization for 2FA and single sign-on (SSO) via a web portal.
+  icon: dashboardicons:authelia
 authentik:
   description: Identity provider for single sign-on, OAuth, SAML, and forward auth.
   icon: dashboardicons:authentik
 backrest:
   description: Web UI for managing Restic backup repositories and schedules.
   icon: dashboardicons:backrest
+baserow:
+  description: Baserow is a platform for building databases, applications, automations, and AI agents — all without code.
+  icon:  dashboardicons:baserow
 bazarr:
   description: Subtitle management and automation for Sonarr and Radarr libraries.
   icon: dashboardicons:bazarr
@@ -79,6 +91,8 @@ crowdsec:
   icon: dashboardicons:crowdsec
 dashy:
   description: Customizable self-hosted dashboard for services, links, and status widgets.
+deemix:
+  icon: dashboardicons:deemix
 deluge:
   description: BitTorrent client with a web interface and daemon mode.
   icon: dashboardicons:deluge
@@ -126,6 +140,9 @@ flower:
   description: Real-time web monitoring and admin tool for Celery distributed task queues.
 fluent-bit:
   description: Lightweight log forwarder and processor for shipping logs to backends.
+fluffychat:
+  icon: dashboardicons:fluffychat
+  description: FluffyChat is an open source, nonprofit and cute [matrix] client.
 focalboard:
   description: Self-hosted project management with kanban boards, tasks, and notes.
   icon: dashboardicons:focalboard
@@ -167,6 +184,9 @@ grafana:
 graylog:
   description: Centralized log management, search, dashboards, and alerting.
   icon: dashboardicons:graylog
+grimmory:
+  icon: dashboardicons:grimmory
+  description: A self-hosted library for your ebooks, comics, and audiobooks.
 guacamole:
   description: Clientless remote desktop gateway for SSH, RDP, and VNC sessions.
   icon: dashboardicons:apache-guacamole
@@ -484,6 +504,9 @@ semaphoreui:
 sentry:
   description: Application performance monitoring and error tracking.
   icon: dashboardicons:sentry
+shelfmark:
+  icon: dashboardicons:shelfmark
+  description: Shelfmark is a web interface for searching for books and audiobooks across multiple sources. 
 silverbullet:
   description: Markdown-based note-taking platform with extensible plugins.
 snipe-it:
