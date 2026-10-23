@@ -165,6 +165,16 @@ services:
         url_scheme: http
         device_tags: [node]
 
+    # NetBird (Cloud or self-hosted). PAT from a NetBird service user.
+    - type: netbird
+      name: netbird
+      tags: [netbird, vpn]
+      netbird:
+        # api_url: https://netbird.example.com  # self-hosted; omit for NetBird Cloud
+        api_token: ${NETBIRD_API_TOKEN}
+        url_scheme: http
+        device_tags: [node]
+
     # Docker — container labels (or Traefik Host(...) rule fallback).
     # - type: docker
     #   name: local
