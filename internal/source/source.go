@@ -15,6 +15,7 @@ import (
 	dockersource "github.com/adinhodovic/compass/internal/source/docker"
 	headscalesource "github.com/adinhodovic/compass/internal/source/headscale"
 	kubernetessource "github.com/adinhodovic/compass/internal/source/kubernetes"
+	netbirdsource "github.com/adinhodovic/compass/internal/source/netbird"
 	staticsource "github.com/adinhodovic/compass/internal/source/static"
 	tailscalesource "github.com/adinhodovic/compass/internal/source/tailscale"
 )
@@ -47,6 +48,8 @@ var (
 	_ Closer        = headscalesource.Source{}
 	_ Source        = kubernetessource.Source{}
 	_ LogAttributer = kubernetessource.Source{}
+	_ Source        = netbirdsource.Source{}
+	_ LogAttributer = netbirdsource.Source{}
 	_ Source        = staticsource.Source{}
 	_ Source        = tailscalesource.Source{}
 	_ LogAttributer = tailscalesource.Source{}
@@ -95,6 +98,12 @@ func BuildSources(cfg config.Config, client *http.Client) ([]Entry, error) {
 			src = s
 		case compass.SourceTypeHeadscale:
 			s, err := headscalesource.New(sourceConfig)
+			if err != nil {
+				return nil, err
+			}
+			src = s
+		case compass.SourceTypeNetbird:
+			s, err := netbirdsource.New(sourceConfig, client)
 			if err != nil {
 				return nil, err
 			}

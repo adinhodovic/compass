@@ -310,7 +310,7 @@ type-specific config:
 
 | Field              | Notes                                                                |
 | ------------------ | -------------------------------------------------------------------- |
-| `type`             | Required. One of `static`, `docker`, `kubernetes`, `tailscale`, `headscale`, `api`. |
+| `type`             | Required. One of `static`, `docker`, `kubernetes`, `tailscale`, `headscale`, `netbird`, `dns_sd`, `api`. |
 | `name`             | Required. Used as the source instance name (shown in the UI and `/debug`). |
 | `access.required_groups` | Optional. When set, services, details, command search entries, page shortcodes, and debug rows from this source are visible only to users in at least one listed group. Omit it or leave it empty for a public source. |
 | `tags`             | Applied to every service from this source. Per-service tags are appended after these. |
@@ -356,7 +356,7 @@ The binary takes two flags. Anything else lives in `compass.yaml`.
 | `-c`, `--config`           | `COMPASS_CONFIG`         | `compass.yaml` | Path to the config file. Relative or absolute. |
 
 Everything else, including provider credentials, Tailscale OAuth,
-Headscale API keys, Docker host, and Kubernetes bearer tokens, is set in
+Headscale API keys, NetBird access tokens, Docker host, and Kubernetes bearer tokens, is set in
 `compass.yaml`, optionally with `${VAR}` interpolation so secrets come from
 the process environment without templating tooling:
 

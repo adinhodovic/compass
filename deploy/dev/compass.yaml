@@ -166,6 +166,17 @@ services:
         url_scheme: http
         device_tags: [node]
 
+    # Exercises the netbird source over REST. `make dev` exports
+    # NETBIRD_API_TOKEN from the netbird-init bootstrap output.
+    - type: netbird
+      name: netbird
+      tags: [netbird, vpn]
+      netbird:
+        api_url: http://localhost:8086
+        api_token: ${NETBIRD_API_TOKEN}
+        url_scheme: http
+        device_tags: [node]
+
     # Talks to whatever cluster KUBECONFIG / ~/.kube/config points at.
     # Exercises the kubeconfig code path. Skipped automatically when no
     # kubeconfig is present.

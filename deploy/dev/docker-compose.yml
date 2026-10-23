@@ -1,7 +1,9 @@
 # Dev stack for exercising every Compass source end-to-end.
 #
 #   docker compose -f deploy/dev/docker-compose.yml up -d
-#   HEADSCALE_API_KEY=$(cat deploy/dev/.headscale-key/apikey.txt) go run ./cmd/compass -c deploy/dev/compass.yaml
+#   HEADSCALE_API_KEY=$(cat deploy/dev/.headscale-key/apikey.txt) \
+#   NETBIRD_API_TOKEN=$(cat deploy/dev/.netbird-key/token.txt) \
+#     go run ./cmd/compass -c deploy/dev/compass.yaml
 #
 # Compass runs on the host so it can read /var/run/docker.sock and
 # reach Caddy's admin API on localhost:2019.
@@ -219,6 +221,109 @@ services:
         fi
         exec sleep infinity
 
+  # Self-hosted NetBird combined server. NB_SETUP_PAT_ENABLED lets
+  # netbird-init create the owner and get a PAT back in one unauthenticated
+  # /api/setup call, the same path NetBird's own e2e harness uses.
+  netbird:
+    image: netbirdio/netbird-server:0.81.3
+    command: ["--config", "/etc/netbird/config.yaml"]
+    restart: unless-stopped
+    environment:
+      NB_SETUP_PAT_ENABLED: "true"
+      NB_DISABLE_GEOLOCATION: "true"
+    ports:
+      - "8086:8080" # REST API consumed by the netbird source
+    volumes:
+      - ./netbird-config.yaml:/etc/netbird/config.yaml:ro
+      - netbird-data:/var/lib/netbird
+    healthcheck:
+      # The image is plain ubuntu (no curl/wget); bash's /dev/tcp is enough
+      # to see the healthcheck listener come up.
+      test: ["CMD", "bash", "-c", "exec 3<>/dev/tcp/127.0.0.1/9000"]
+      interval: 2s
+      timeout: 2s
+      retries: 30
+      start_period: 3s
+
+  # One-shot bootstrap: owner + PAT, a `servers` group, and a reusable
+  # setup key that auto-assigns it. Writes the PAT and setup key into
+  # deploy/dev/.netbird-key so `make dev` can export NETBIRD_API_TOKEN and
+  # the demo peers can join. Sleeps afterwards so `compose up --wait` sees
+  # it running; the healthcheck gates the peers on the setup key existing.
+  netbird-init:
+    build:
+      context: .
+      dockerfile: Dockerfile.netbird-init
+    image: compass-dev-netbird-init:local
+    depends_on:
+      netbird:
+        condition: service_healthy
+    volumes:
+      - ./.netbird-key:/state
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        set -e
+        API=http://netbird:8080/api
+        TOKEN_FILE=/state/token.txt
+        SETUP_KEY_FILE=/state/setupkey.txt
+        until curl -fsS "$$API/instance" >/tmp/instance.json; do sleep 1; done
+        # setup_required is true only on a fresh netbird-data volume, so a
+        # cached PAT / setup key from a previous generation is stale.
+        if jq -e '.setup_required' /tmp/instance.json >/dev/null; then
+          rm -f "$$TOKEN_FILE" "$$SETUP_KEY_FILE"
+          curl -fsS -X POST "$$API/setup" -H 'Content-Type: application/json' \
+            -d '{"email":"dev@compass.local","password":"compass-dev-password","name":"Compass Dev","create_pat":true,"pat_expire_in":365}' \
+            | jq -r '.personal_access_token' > "$$TOKEN_FILE"
+        fi
+        if [ ! -s "$$TOKEN_FILE" ]; then
+          echo "netbird is set up but $$TOKEN_FILE is missing; reset with: docker compose -f deploy/dev/docker-compose.yml down -v" >&2
+          exit 1
+        fi
+        AUTH="Authorization: Token $$(cat "$$TOKEN_FILE")"
+        if [ ! -s "$$SETUP_KEY_FILE" ]; then
+          GROUP_ID=$$(curl -fsS -X POST "$$API/groups" -H "$$AUTH" -H 'Content-Type: application/json' \
+            -d '{"name":"servers"}' | jq -r '.id')
+          curl -fsS -X POST "$$API/setup-keys" -H "$$AUTH" -H 'Content-Type: application/json' \
+            -d "{\"name\":\"compass-dev\",\"type\":\"reusable\",\"expires_in\":31536000,\"auto_groups\":[\"$$GROUP_ID\"],\"usage_limit\":0}" \
+            | jq -r '.key' > "$$SETUP_KEY_FILE"
+        fi
+        # Compass runs on the host as the invoking user and must read the PAT.
+        chmod 644 "$$TOKEN_FILE" "$$SETUP_KEY_FILE"
+        echo "netbird bootstrap complete"
+        exec sleep infinity
+    healthcheck:
+      test: ["CMD", "test", "-s", "/state/setupkey.txt"]
+      interval: 2s
+      timeout: 2s
+      retries: 30
+
+  # Two demo peers so the netbird source has something to list. Netstack
+  # mode runs WireGuard in userspace without a TUN device, so no extra
+  # capabilities are needed.
+  netbird-peer-laptop: &netbird-peer
+    image: netbirdio/netbird:0.81.3
+    restart: unless-stopped
+    depends_on:
+      netbird-init:
+        condition: service_healthy
+    environment:
+      NB_MANAGEMENT_URL: http://netbird:8080
+      NB_HOSTNAME: demo-laptop
+      NB_USE_NETSTACK_MODE: "true"
+    volumes:
+      - ./.netbird-key:/state:ro
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - NB_SETUP_KEY="$$(cat /state/setupkey.txt)" exec /usr/local/bin/netbird-entrypoint.sh
+
+  netbird-peer-server:
+    <<: *netbird-peer
+    environment:
+      NB_MANAGEMENT_URL: http://netbird:8080
+      NB_HOSTNAME: demo-server
+      NB_USE_NETSTACK_MODE: "true"
+
   # Local k3s cluster for the kubernetes source's inline-credentials code
   # path (cluster_url + bearer_token_file + cluster_ca_file). The
   # kubeconfig source already in compass.yaml exercises the kubeconfig
@@ -306,4 +411,5 @@ services:
 volumes:
   headscale-socket:
   headscale-data:
+  netbird-data:
   k3s-data:
