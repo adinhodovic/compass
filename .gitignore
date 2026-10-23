@@ -11,6 +11,7 @@ playwright-report/
 test-results/
 site/
 deploy/dev/.headscale-key
+deploy/dev/.netbird-key
 deploy/dev/.kube/
 
 # Override global gitignore patterns (e.g. a personal `debug.*` rule)

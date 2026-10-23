@@ -9,6 +9,7 @@ const (
 	SourceTypeDocker     = "docker"
 	SourceTypeHeadscale  = "headscale"
 	SourceTypeKubernetes = "kubernetes"
+	SourceTypeNetbird    = "netbird"
 	SourceTypeStatic     = "static"
 	SourceTypeTailscale  = "tailscale"
 )

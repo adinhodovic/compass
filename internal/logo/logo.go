@@ -80,6 +80,8 @@ func sourceIcon(source string) string {
 		return "dashboardicons:kubernetes"
 	case strings.Contains(source, compass.SourceTypeTailscale), strings.Contains(source, "tailnet"):
 		return "dashboardicons:tailscale"
+	case strings.Contains(source, compass.SourceTypeNetbird):
+		return "dashboardicons:netbird"
 	case strings.Contains(source, compass.SourceTypeAPI):
 		return "lucide:plug"
 	case strings.Contains(source, compass.SourceTypeStatic), strings.Contains(source, "manual"):

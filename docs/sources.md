@@ -35,6 +35,7 @@ Where each source's keys live:
 | `kubernetes` | Resource annotations (`enabled` is a label)       |
 | `tailscale`  | Tailscale Service annotations                     |
 | `headscale`  | Native gRPC node fields; no annotation surface    |
+| `netbird`    | Native REST peer fields; no annotation surface    |
 | `api`        | `mapping.fields` map keys (values are `gjson` paths) |
 | `dns_sd`     | DNS SRV record fields; no annotation surface          |
 | `static`     | Top-level YAML keys per service                   |
@@ -121,6 +122,7 @@ Source-side tag conventions:
 - `docker` appends the Compose project name when present.
 - `tailscale` appends Tailscale's own tags after stripping the `tag:` prefix.
 - `headscale` applies configured source/device tags, appends node tags after stripping `tag:`, and marks offline nodes with `offline`.
+- `netbird` applies configured source/device tags, appends the peer's NetBird group names (except the built-in `All`), and marks disconnected peers with `offline`.
 
 #### Metadata
 
@@ -133,11 +135,14 @@ the detail page. URLs in the metadata table auto-render as links.
 | `kubernetes` | `namespace`, `kind`, `labels`, route `hostnames` / `hostname`         |
 | `tailscale`  | `name`, `tailnet`, `addresses`, `ports`, `tags`, device state fields |
 | `headscale`  | `id`, `name`, `given_name`, `addresses`, `online`, `last_seen`, route maps |
+| `netbird`    | `id`, `name`, `hostname`, `ip`, `dns_label`, `connected`, `os`, `version`, `groups`, `last_seen` |
 | `api`        | none                                                                 |
 | `static`     | Whatever the user wrote under `metadata:`                            |
 
 Sensitive identifiers such as API keys, bearer tokens, Tailscale machine
-keys, and Headscale node/machine keys are not rendered as metadata.
+keys, and Headscale node/machine keys are not rendered as metadata. The
+`netbird` source also leaves out each peer's public connection IP,
+location, and serial number.
 
 #### Links
 
@@ -285,10 +290,12 @@ integration:
 | `kubernetes` | Kubernetes API (HTTPRoute, GRPCRoute, Ingress)                  |
 | `tailscale`  | Tailscale API (devices by default, Services opt-in)              |
 | `headscale`  | Headscale gRPC API (self-hosted tailnet nodes)                  |
+| `netbird`    | NetBird management REST API (Cloud or self-hosted peers)        |
 
 The split is intentional. First-class sources earn a dedicated Go client
 when they need non-trivial logic: Kubernetes route expansion, Tailscale
-OAuth refresh, Docker's Traefik-rule fallback, headscale's gRPC transport.
+OAuth refresh, Docker's Traefik-rule fallback, headscale's gRPC transport,
+NetBird's offline tagging and group-to-tag mapping.
 Anything that's just "GET a JSON endpoint" stays in `api`; adding a source
 type per recipe would balloon the codebase without buying anything.
 
@@ -628,6 +635,49 @@ Field reference:
 A working dev example lives in `deploy/dev/compass.yaml`. The
 `headscale-init` sidecar in `deploy/dev/docker-compose.yml` bootstraps a
 demo user, two nodes, and an API key on `make dev-up`.
+
+#### NetBird
+
+Reads peers from a [NetBird][netbird] management server's REST API,
+NetBird Cloud or self-hosted. Each peer becomes a service; its NetBird
+groups become tags.
+
+```yaml
+- type: netbird
+  name: netbird
+  tags: [vpn, netbird]
+  netbird:
+    api_url: https://netbird.example.com    # omit for NetBird Cloud
+    api_token: ${NETBIRD_API_TOKEN}
+    url_scheme: http                        # prefixed onto each peer's IP
+    include_devices: true                   # default true; peers become services
+    device_tags: [node]                     # appended to every peer's tags
+```
+
+[netbird]: https://netbird.io
+
+Field reference:
+
+| Field             | Notes |
+| ----------------- | ----- |
+| `api_url`         | Management server root. Falls back to `NETBIRD_API_URL` env, then `https://api.netbird.io` (NetBird Cloud). |
+| `api_token`       | Personal access token. Falls back to `NETBIRD_API_TOKEN` env. Use `${VAR}` interpolation. |
+| `url_scheme`      | Scheme prefixed onto each peer's NetBird IP (or DNS label when it has no IP). Defaults to `http`. |
+| `tags`            | Tags applied to every discovered peer. |
+| `include_devices` | Toggle peer discovery. Defaults to `true`. |
+| `device_tags`     | Extra tags appended on top of `tags` for every peer. |
+
+Create the token on a [service user][netbird-service-users] rather than a
+personal account, so it survives people leaving and can be revoked on its
+own. Compass only calls `GET /api/peers`, so a read-only service user is
+enough.
+
+[netbird-service-users]: https://docs.netbird.io/manage/public-api
+
+A working dev example lives in `deploy/dev/compass.yaml`. The
+`netbird-init` sidecar in `deploy/dev/docker-compose.yml` bootstraps an
+owner, a personal access token, and a setup key on `make dev-up`. Two
+demo peers then join with that setup key.
 
 ### Second-class
 

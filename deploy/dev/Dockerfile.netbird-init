@@ -1,0 +1,4 @@
+# Shell + curl + jq for the netbird-init compose service, which drives
+# NetBird's REST API to mint an owner PAT and a setup key.
+FROM alpine:3.20
+RUN apk add --no-cache curl jq
