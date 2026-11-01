@@ -45,8 +45,8 @@ type statusSnapshot struct {
 }
 
 // statusKey is a normalized service identifier. A check's service value
-// becomes exactly one key (see checkKey); a compass service is looked up
-// under each of its keys (see serviceKeys).
+// is stored under its keys (see checkKeys); a compass service is looked up
+// under its keys, most specific first (see serviceKeys).
 type statusKey struct {
 	kind  string // "url", "host", or "name"
 	value string
@@ -120,15 +120,13 @@ func (r *Registry) refreshStatus(ctx context.Context, st *statusState) {
 	}
 	up := make(map[statusKey]bool, len(checks))
 	for _, check := range checks {
-		key, ok := checkKey(check.Service)
-		if !ok {
-			continue
+		for _, key := range checkKeys(check.Service) {
+			if prev, seen := up[key]; seen {
+				up[key] = prev && check.Up
+				continue
+			}
+			up[key] = check.Up
 		}
-		if prev, seen := up[key]; seen {
-			up[key] = prev && check.Up
-			continue
-		}
-		up[key] = check.Up
 	}
 	st.snapshot.Store(&statusSnapshot{up: up, checks: len(checks), checkedAt: time.Now()})
 	st.lastErr.Store(nil)
@@ -240,25 +238,26 @@ func (r *Registry) statusStep(service compass.Service) string {
 	return "No status: no check matched " + strings.Join(tried, ", ")
 }
 
-// checkKey classifies a check's service value by its shape: a value with a
-// path is a URL, a URL or host[:port] is a host, and a plain word is a
-// service name.
-func checkKey(value string) (statusKey, bool) {
+// checkKeys classifies a check's service value by its shape: a plain word
+// is a service name, and a URL or host[:port] is a host. A value with a
+// path is also a URL key, so it matches a service at that exact URL first
+// and otherwise its host, as for a blackbox probe of https://app/health.
+func checkKeys(value string) []statusKey {
 	value = strings.TrimSpace(value)
 	if value == "" {
-		return statusKey{}, false
+		return nil
 	}
 	if !strings.Contains(value, "://") && !strings.ContainsAny(value, ".:/") {
-		return statusKey{kind: "name", value: strings.ToLower(value)}, true
+		return []statusKey{{kind: "name", value: strings.ToLower(value)}}
 	}
 	host, path := hostPath(value)
 	switch {
 	case host == "":
-		return statusKey{}, false
+		return nil
 	case path != "":
-		return statusKey{kind: "url", value: host + path}, true
+		return []statusKey{{kind: "url", value: host + path}, {kind: "host", value: host}}
 	default:
-		return statusKey{kind: "host", value: host}, true
+		return []statusKey{{kind: "host", value: host}}
 	}
 }
 

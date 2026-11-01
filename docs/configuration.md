@@ -399,10 +399,11 @@ status:
 `prometheus` and `gatus` set `items`, `service`, and `up` for you; set any
 of them to override, e.g. `service: name` to match Gatus endpoints by name.
 
-**Matching.** A check's service value is compared by its shape: a URL with
-a path against the service URL, a URL or host against the service host
-(ports other than 80/443 kept), and a plain word against the service name,
-ignoring case. The first matching entry in `status:` wins, and a service
+**Matching.** A check's service value is compared by its shape: a URL or
+host against the service host (ports other than 80/443 kept), and a plain
+word against the service name, ignoring case. A URL with a path, such as a
+probe of `https://app/health`, matches a service at that exact URL first
+and otherwise its host. The first matching entry in `status:` wins, and a service
 with several checks shows down if any is down. `/debug` shows what each
 service matched, and keeps a provider's last good result when a fetch
 fails.
