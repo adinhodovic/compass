@@ -38,7 +38,7 @@ func newProvider(t *testing.T, entry, body string, code int) (*Provider, *http.H
 	return New(cfg.Status[0], srv.Client()), &got
 }
 
-const jsonEntry = "{endpoint: URL, mapping: {match: host, up: ok}}"
+const jsonEntry = "{url: URL, service: host, up: ok}"
 
 func TestFetchMapsChecks(t *testing.T) {
 	tests := []struct {
@@ -56,8 +56,8 @@ func TestFetchMapsChecks(t *testing.T) {
 				{"metric":{"job":"no-instance"},"value":[1730000000,"1"]}
 			]}}`,
 			want: []Check{
-				{Match: "https://grafana.home", Up: true},
-				{Match: "https://plex.home", Up: false},
+				{Service: "https://grafana.home", Up: true},
+				{Service: "https://plex.home", Up: false},
 			},
 		},
 		{
@@ -70,11 +70,11 @@ func TestFetchMapsChecks(t *testing.T) {
 				]},
 				{"name":"empty","results":[]}
 			]`,
-			want: []Check{{Match: "grafana.home", Up: true}},
+			want: []Check{{Service: "grafana.home", Up: true}},
 		},
 		{
-			name:  "json booleans without up_value",
-			entry: "{endpoint: URL, mapping: {items_path: checks, match: host, up: ok}}",
+			name:  "json booleans, skipped items, unknown words are down",
+			entry: "{url: URL, items: checks, service: host, up: ok}",
 			body: `{"checks":[
 				{"host":"a.home","ok":true},
 				{"host":"b.home","ok":false},
@@ -82,13 +82,28 @@ func TestFetchMapsChecks(t *testing.T) {
 				{"host":"","ok":true},
 				{"host":{"nested":1},"ok":true}
 			]}`,
-			want: []Check{{Match: "a.home", Up: true}, {Match: "b.home", Up: false}},
+			want: []Check{
+				{Service: "a.home", Up: true},
+				{Service: "b.home", Up: false},
+				{Service: "c.home", Up: false},
+			},
 		},
 		{
-			name:  "json up_value with items_mode values",
-			entry: "{endpoint: URL, mapping: {items_mode: values, match: url, up: state, up_value: UP}}",
-			body:  `{"x":{"url":"https://a.home","state":"UP"}}`,
-			want:  []Check{{Match: "https://a.home", Up: true}},
+			name:  "json up values by convention",
+			entry: "{url: URL, service: url, up: state}",
+			body: `[
+				{"url":"https://a.home","state":"Healthy"},
+				{"url":"https://b.home","state":"degraded"},
+				{"url":"https://c.home","state":0},
+				{"url":"https://d.home","state":2},
+				{"url":"https://e.home","state":null}
+			]`,
+			want: []Check{
+				{Service: "https://a.home", Up: true},
+				{Service: "https://b.home", Up: false},
+				{Service: "https://c.home", Up: false},
+				{Service: "https://d.home", Up: true},
+			},
 		},
 	}
 	for _, tt := range tests {
@@ -107,7 +122,7 @@ func TestFetchMapsChecks(t *testing.T) {
 
 func TestFetchSendsHeaders(t *testing.T) {
 	p, got := newProvider(t,
-		"{endpoint: URL, headers: {Authorization: Bearer t}, mapping: {match: host, up: ok}}",
+		"{url: URL, headers: {Authorization: Bearer t}, service: host, up: ok}",
 		`[]`, http.StatusOK)
 	if _, err := p.Fetch(context.Background()); err != nil {
 		t.Fatalf("Fetch: %v", err)

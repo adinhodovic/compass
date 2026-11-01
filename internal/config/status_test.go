@@ -26,99 +26,62 @@ func TestSetStatusDefaultsExpandsPresets(t *testing.T) {
 			name: "prometheus defaults",
 			in:   StatusConfig{Type: "prometheus", URL: "http://prom:9090/"},
 			want: StatusConfig{
-				Type:       StatusTypePrometheus,
-				Name:       StatusTypePrometheus,
-				URL:        "http://prom:9090/",
-				Query:      "probe_success",
-				MatchLabel: "instance",
-				Endpoint:   "http://prom:9090/api/v1/query?query=probe_success",
-				Interval:   "30s",
-				MatchOn:    StatusMatchHost,
-				Mapping: StatusMappingConfig{
-					ItemsPath: "data.result",
-					Match:     "metric.instance",
-					Up:        "value.1",
-					UpValue:   "1",
-				},
+				Type:     StatusTypePrometheus,
+				Name:     StatusTypePrometheus,
+				URL:      "http://prom:9090/",
+				Query:    "probe_success",
+				Interval: "30s",
+				Items:    "data.result",
+				Service:  "metric.instance",
+				Up:       "value.1",
+				Endpoint: "http://prom:9090/api/v1/query?query=probe_success",
 			},
 		},
 		{
 			name: "prometheus uptime kuma recipe escapes query",
 			in: StatusConfig{
-				Type:       "Prometheus",
-				Name:       "kuma",
-				URL:        "http://prom:9090",
-				Query:      `monitor_status{job="kuma"}`,
-				MatchLabel: "monitor_url",
+				Type:    "Prometheus",
+				Name:    "kuma",
+				URL:     "http://prom:9090",
+				Query:   `monitor_status{job="kuma"}`,
+				Service: "metric.monitor_url",
 			},
 			want: StatusConfig{
-				Type:       StatusTypePrometheus,
-				Name:       "kuma",
-				URL:        "http://prom:9090",
-				Query:      `monitor_status{job="kuma"}`,
-				MatchLabel: "monitor_url",
-				Endpoint:   "http://prom:9090/api/v1/query?query=monitor_status%7Bjob%3D%22kuma%22%7D",
-				Interval:   "30s",
-				MatchOn:    StatusMatchHost,
-				Mapping: StatusMappingConfig{
-					ItemsPath: "data.result",
-					Match:     "metric.monitor_url",
-					Up:        "value.1",
-					UpValue:   "1",
-				},
+				Type:     StatusTypePrometheus,
+				Name:     "kuma",
+				URL:      "http://prom:9090",
+				Query:    `monitor_status{job="kuma"}`,
+				Interval: "30s",
+				Items:    "data.result",
+				Service:  "metric.monitor_url",
+				Up:       "value.1",
+				Endpoint: "http://prom:9090/api/v1/query?query=monitor_status%7Bjob%3D%22kuma%22%7D",
 			},
 		},
 		{
 			name: "gatus defaults",
-			in:   StatusConfig{Type: "gatus", URL: "http://gatus:8080"},
+			in:   StatusConfig{Type: "gatus", URL: "http://gatus:8080", Interval: "1m"},
 			want: StatusConfig{
 				Type:     StatusTypeGatus,
 				Name:     StatusTypeGatus,
 				URL:      "http://gatus:8080",
+				Interval: "1m",
+				Service:  "results.@reverse.0.hostname",
+				Up:       "results.@reverse.0.success",
 				Endpoint: "http://gatus:8080/api/v1/endpoints/statuses",
-				Interval: "30s",
-				MatchOn:  StatusMatchHost,
-				Mapping: StatusMappingConfig{
-					Match: "results.@reverse.0.hostname",
-					Up:    "results.@reverse.0.success",
-				},
 			},
 		},
 		{
-			name: "preset fields are overridable",
-			in: StatusConfig{
-				Type:     "gatus",
-				URL:      "http://gatus:8080",
-				Interval: "1m",
-				MatchOn:  "name",
-				Mapping:  StatusMappingConfig{Match: "name"},
-			},
-			want: StatusConfig{
-				Type:     StatusTypeGatus,
-				Name:     StatusTypeGatus,
-				URL:      "http://gatus:8080",
-				Endpoint: "http://gatus:8080/api/v1/endpoints/statuses",
-				Interval: "1m",
-				MatchOn:  StatusMatchName,
-				Mapping: StatusMappingConfig{
-					Match: "name",
-					Up:    "results.@reverse.0.success",
-				},
-			},
-		},
-		{
-			name: "json is left as written",
-			in: StatusConfig{
-				Endpoint: "http://health/checks",
-				Mapping:  StatusMappingConfig{Match: "host", Up: "ok"},
-			},
+			name: "json fetches url as-is",
+			in:   StatusConfig{URL: "http://health/checks", Service: "host", Up: "ok"},
 			want: StatusConfig{
 				Type:     StatusTypeJSON,
 				Name:     StatusTypeJSON,
-				Endpoint: "http://health/checks",
+				URL:      "http://health/checks",
 				Interval: "30s",
-				MatchOn:  StatusMatchHost,
-				Mapping:  StatusMappingConfig{Match: "host", Up: "ok"},
+				Service:  "host",
+				Up:       "ok",
+				Endpoint: "http://health/checks",
 			},
 		},
 	}
@@ -139,101 +102,53 @@ func TestLoadValidatesStatus(t *testing.T) {
 		status  string
 		wantErr string
 	}{
+		{name: "valid prometheus", status: `{type: prometheus, url: "http://prom:9090"}`},
 		{
-			name: "valid prometheus",
-			status: `
-  - type: prometheus
-    url: http://prom:9090`,
-		},
-		{
-			name: "unknown type",
-			status: `
-  - type: nagios
-    url: http://nagios`,
+			name:    "unknown type",
+			status:  `{type: nagios, url: "http://nagios"}`,
 			wantErr: "type must be json, prometheus, or gatus",
 		},
+		{name: "url required", status: `{type: gatus}`, wantErr: "url must be an http(s) URL"},
 		{
-			name: "json needs endpoint",
-			status: `
-  - type: json
-    mapping: {match: host, up: ok}`,
-			wantErr: "endpoint is required for type json",
-		},
-		{
-			name: "preset needs url",
-			status: `
-  - type: gatus`,
-			wantErr: "url is required for type gatus",
-		},
-		{
-			name: "endpoint must be http",
-			status: `
-  - type: json
-    endpoint: ftp://health
-    mapping: {match: host, up: ok}`,
-			wantErr: "endpoint must be an http(s) URL",
+			name:    "url must be http",
+			status:  `{url: "ftp://health", service: host, up: ok}`,
+			wantErr: "url must be an http(s) URL",
 		},
 		{
 			name: "duplicate names",
-			status: `
-  - type: prometheus
-    url: http://prom-a:9090
-  - type: prometheus
-    url: http://prom-b:9090`,
+			status: `{type: prometheus, url: "http://prom-a:9090"},
+  {type: prometheus, url: "http://prom-b:9090"}`,
 			wantErr: `duplicate status name "prometheus"`,
 		},
 		{
-			name: "bad interval",
-			status: `
-  - type: prometheus
-    url: http://prom:9090
-    interval: soon`,
+			name:    "bad interval",
+			status:  `{type: prometheus, url: "http://prom:9090", interval: soon}`,
 			wantErr: "interval must be a positive duration",
 		},
 		{
-			name: "zero interval",
-			status: `
-  - type: prometheus
-    url: http://prom:9090
-    interval: 0s`,
+			name:    "zero interval",
+			status:  `{type: prometheus, url: "http://prom:9090", interval: 0s}`,
 			wantErr: "interval must be a positive duration",
 		},
 		{
-			name: "bad match_on",
-			status: `
-  - type: prometheus
-    url: http://prom:9090
-    match_on: ip`,
-			wantErr: "match_on must be host, url, name, or id",
+			name:    "json needs service",
+			status:  `{url: "http://health", up: ok}`,
+			wantErr: "service is required for type json",
 		},
 		{
-			name: "bad items_mode",
-			status: `
-  - type: json
-    endpoint: http://health
-    mapping: {items_mode: keys, match: host, up: ok}`,
-			wantErr: "mapping.items_mode must be array or values",
+			name:    "json needs up",
+			status:  `{url: "http://health", service: host}`,
+			wantErr: "up is required for type json",
 		},
 		{
-			name: "json needs mapping.match",
-			status: `
-  - type: json
-    endpoint: http://health
-    mapping: {up: ok}`,
-			wantErr: "mapping.match is required",
-		},
-		{
-			name: "json needs mapping.up",
-			status: `
-  - type: json
-    endpoint: http://health
-    mapping: {match: host}`,
-			wantErr: "mapping.up is required",
+			name:    "removed fields are rejected",
+			status:  `{type: prometheus, url: "http://prom:9090", match_on: host}`,
+			wantErr: "field match_on not found",
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			path := writeConfig(t, statusTestSources+"status:"+tt.status+"\n")
+			path := writeConfig(t, statusTestSources+"status: ["+tt.status+"]\n")
 			_, err := Load(path)
 			if tt.wantErr == "" {
 				if err != nil {

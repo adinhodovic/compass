@@ -11,7 +11,6 @@ import (
 	"time"
 
 	"github.com/adinhodovic/compass/internal/compass"
-	"github.com/adinhodovic/compass/internal/config"
 	"github.com/adinhodovic/compass/internal/metrics"
 	"github.com/adinhodovic/compass/internal/status"
 )
@@ -38,12 +37,22 @@ type statusState struct {
 }
 
 type statusSnapshot struct {
-	// up is keyed by the check's match value, normalized per the
-	// provider's MatchOn. Duplicate keys resolve to down if any is down.
-	up        map[string]bool
+	// up is keyed by statusKey of each check's service value. Duplicate
+	// keys resolve to down if any is down.
+	up        map[statusKey]bool
 	checks    int
 	checkedAt time.Time
 }
+
+// statusKey is a normalized service identifier. A check's service value
+// becomes exactly one key (see checkKey); a compass service is looked up
+// under each of its keys (see serviceKeys).
+type statusKey struct {
+	kind  string // "url", "host", or "name"
+	value string
+}
+
+func (k statusKey) String() string { return fmt.Sprintf("%s %q", k.kind, k.value) }
 
 // StatusProviderStatus is a snapshot of one status provider for /debug.
 type StatusProviderStatus struct {
@@ -109,14 +118,13 @@ func (r *Registry) refreshStatus(ctx context.Context, st *statusState) {
 		}
 		return
 	}
-	matchOn := st.provider.MatchOn()
-	up := make(map[string]bool, len(checks))
+	up := make(map[statusKey]bool, len(checks))
 	for _, check := range checks {
-		key := statusKey(check.Match, matchOn)
-		if key == "" {
+		key, ok := checkKey(check.Service)
+		if !ok {
 			continue
 		}
-		if prev, ok := up[key]; ok {
+		if prev, seen := up[key]; seen {
 			up[key] = prev && check.Up
 			continue
 		}
@@ -155,18 +163,27 @@ func (r *Registry) applyStatuses(services []compass.Service) {
 			if snap == nil {
 				continue
 			}
-			up, ok := snap.up[serviceStatusKey(services[i], st.provider.MatchOn())]
-			if !ok {
-				continue
+			if up, _, ok := snap.lookup(services[i]); ok {
+				services[i].Status = &compass.Status{
+					Up:        up,
+					Provider:  st.provider.Name(),
+					CheckedAt: snap.checkedAt,
+				}
+				break
 			}
-			services[i].Status = &compass.Status{
-				Up:        up,
-				Provider:  st.provider.Name(),
-				CheckedAt: snap.checkedAt,
-			}
-			break
 		}
 	}
+}
+
+// lookup finds a check for service, trying its keys from most to least
+// specific: URL with path, then host, then name.
+func (snap *statusSnapshot) lookup(service compass.Service) (up bool, key statusKey, ok bool) {
+	for _, key := range serviceKeys(service) {
+		if up, ok := snap.up[key]; ok {
+			return up, key, true
+		}
+	}
+	return false, statusKey{}, false
 }
 
 // explainStatuses appends a status step to each explanation so /debug says
@@ -192,80 +209,96 @@ func (r *Registry) explainStatuses(explanations []ServiceExplanation) {
 }
 
 func (r *Registry) statusStep(service compass.Service) string {
-	var tried []string
+	checked := false
 	for _, st := range r.statuses {
-		if st.snapshot.Load() == nil {
+		snap := st.snapshot.Load()
+		if snap == nil {
 			continue
 		}
-		name, matchOn := st.provider.Name(), st.provider.MatchOn()
-		key := serviceStatusKey(service, matchOn)
-		if service.Status != nil && service.Status.Provider == name {
+		checked = true
+		if up, key, ok := snap.lookup(service); ok {
 			state := "down"
-			if service.Status.Up {
+			if up {
 				state = "up"
 			}
 			return fmt.Sprintf(
-				"Status: %s, reported by %s (matched %s %q)",
+				"Status: %s, reported by %s (matched %s)",
 				state,
-				name,
-				matchOn,
+				st.provider.Name(),
 				key,
 			)
 		}
-		tried = append(tried, fmt.Sprintf("no check in %s matched %s %q", name, matchOn, key))
 	}
-	if len(tried) == 0 {
+	if !checked {
 		return ""
 	}
-	return "No status: " + strings.Join(tried, "; ")
-}
-
-func serviceStatusKey(service compass.Service, matchOn string) string {
-	switch matchOn {
-	case config.StatusMatchName:
-		return statusKey(service.Name, matchOn)
-	case config.StatusMatchID:
-		return statusKey(service.ID, matchOn)
-	default:
-		return statusKey(service.URL, matchOn)
+	keys := serviceKeys(service)
+	tried := make([]string, len(keys))
+	for i, key := range keys {
+		tried[i] = key.String()
 	}
+	return "No status: no check matched " + strings.Join(tried, ", ")
 }
 
-// statusKey normalizes a value so a provider's match value and a service
-// field compare equal when they refer to the same thing: hosts drop
-// scheme, path, and default ports; URLs drop a trailing slash; names
-// ignore case.
-func statusKey(value, matchOn string) string {
+// checkKey classifies a check's service value by its shape: a value with a
+// path is a URL, a URL or host[:port] is a host, and a plain word is a
+// service name.
+func checkKey(value string) (statusKey, bool) {
 	value = strings.TrimSpace(value)
-	switch matchOn {
-	case config.StatusMatchHost:
-		return hostPortKey(value)
-	case config.StatusMatchURL:
-		return strings.TrimRight(value, "/")
-	case config.StatusMatchName:
-		return strings.ToLower(value)
+	if value == "" {
+		return statusKey{}, false
+	}
+	if !strings.Contains(value, "://") && !strings.ContainsAny(value, ".:/") {
+		return statusKey{kind: "name", value: strings.ToLower(value)}, true
+	}
+	host, path := hostPath(value)
+	switch {
+	case host == "":
+		return statusKey{}, false
+	case path != "":
+		return statusKey{kind: "url", value: host + path}, true
 	default:
-		return value
+		return statusKey{kind: "host", value: host}, true
 	}
 }
 
-// hostPortKey reduces a URL or bare host[:port] to a lowercase host, keeping
-// the port only when it isn't 80 or 443. Services told apart only by port
-// (http://192.168.1.10:3000 vs :8080) must not collapse into one key, while
-// https://grafana.home and grafana.home:443 should still match.
-func hostPortKey(value string) string {
+// serviceKeys lists the keys a compass service can be matched under, most
+// specific first.
+func serviceKeys(service compass.Service) []statusKey {
+	var keys []statusKey
+	host, path := hostPath(service.URL)
+	if host != "" && path != "" {
+		keys = append(keys, statusKey{kind: "url", value: host + path})
+	}
+	if host != "" {
+		keys = append(keys, statusKey{kind: "host", value: host})
+	}
+	if name := strings.ToLower(strings.TrimSpace(service.Name)); name != "" {
+		keys = append(keys, statusKey{kind: "name", value: name})
+	}
+	return keys
+}
+
+// hostPath reduces a URL or bare host[:port][/path] to a lowercase host and
+// a path without trailing slash. The port is kept unless it is 80 or 443, so
+// services told apart only by port (http://192.168.1.10:3000 vs :8080) stay
+// apart, while https://grafana.home and grafana.home:443 still match.
+func hostPath(value string) (host, path string) {
 	u, err := url.Parse(value)
 	if err != nil || u.Host == "" {
 		u, err = url.Parse("//" + value)
 		if err != nil {
-			return ""
+			return "", ""
 		}
 	}
-	host := strings.ToLower(u.Hostname())
+	host = strings.ToLower(u.Hostname())
+	if host == "" {
+		return "", ""
+	}
 	switch port := u.Port(); port {
 	case "", "80", "443":
-		return host
 	default:
-		return net.JoinHostPort(host, port)
+		host = net.JoinHostPort(host, port)
 	}
+	return host, strings.TrimRight(u.Path, "/")
 }

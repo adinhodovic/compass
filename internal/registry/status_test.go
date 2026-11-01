@@ -21,11 +21,7 @@ type statusServer struct {
 	fail atomic.Bool
 }
 
-func newStatusProvider(
-	t *testing.T,
-	name, matchOn string,
-	srv *statusServer,
-) *status.Provider {
+func newStatusProvider(t *testing.T, name string, srv *statusServer) *status.Provider {
 	t.Helper()
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		if srv.fail.Load() {
@@ -40,8 +36,8 @@ func newStatusProvider(
 		Name:     name,
 		Endpoint: ts.URL,
 		Interval: "1h",
-		MatchOn:  matchOn,
-		Mapping:  config.StatusMappingConfig{Match: "key", Up: "up"},
+		Service:  "key",
+		Up:       "up",
 	}, ts.Client())
 }
 
@@ -63,63 +59,58 @@ func statusByName(services []compass.Service) map[string]*compass.Status {
 	return out
 }
 
-func TestServicesMatchStatusByKey(t *testing.T) {
+func TestServicesMatchStatusByShape(t *testing.T) {
 	services := []compass.Service{
-		{ID: "grafana", Name: "Grafana", URL: "https://grafana.home/dashboards"},
-		{ID: "plex", Name: "Plex", URL: "https://plex.home"},
-		{ID: "docs", Name: "Docs", URL: "https://docs.home"},
-		{ID: "app-a", Name: "App A", URL: "http://192.168.1.10:3000"},
-		{ID: "app-b", Name: "App B", URL: "http://192.168.1.10:8080/"},
+		{Name: "Grafana", URL: "https://grafana.home/dashboards"},
+		{Name: "Plex", URL: "https://plex.home"},
+		{Name: "Docs", URL: "https://docs.home"},
+		{Name: "App A", URL: "http://192.168.1.10:3000"},
+		{Name: "App B", URL: "http://192.168.1.10:8080/"},
+		{Name: "Wiki", URL: "https://home.lan/wiki"},
+		{Name: "Notes", URL: "https://home.lan/notes"},
 	}
 	tests := []struct {
-		name    string
-		matchOn string
-		body    string
-		want    map[string]*bool
+		name string
+		body string
+		want map[string]*bool
 	}{
 		{
-			name:    "host ignores scheme, path, and default ports",
-			matchOn: config.StatusMatchHost,
+			name: "host ignores scheme, path, case, and default ports",
 			body: `[{"key":"https://GRAFANA.home","up":true},
 				{"key":"plex.home:443","up":false}]`,
 			want: map[string]*bool{"Grafana": new(true), "Plex": new(false), "Docs": nil},
 		},
 		{
-			name:    "host keeps non-default ports apart",
-			matchOn: config.StatusMatchHost,
+			name: "host keeps non-default ports apart",
 			body: `[{"key":"192.168.1.10:3000","up":true},
-				{"key":"http://192.168.1.10:8080","up":false},
-				{"key":"192.168.1.10","up":true}]`,
+				{"key":"http://192.168.1.10:8080","up":false}]`,
 			want: map[string]*bool{"App A": new(true), "App B": new(false), "Grafana": nil},
 		},
 		{
-			name:    "url ignores trailing slash",
-			matchOn: config.StatusMatchURL,
-			body:    `[{"key":"https://docs.home/","up":true},{"key":"https://grafana.home","up":true}]`,
-			want:    map[string]*bool{"Grafana": nil, "Plex": nil, "Docs": new(true)},
+			name: "a path matches the full URL, keeping same-host services apart",
+			body: `[{"key":"https://home.lan/wiki/","up":true},
+				{"key":"home.lan/notes","up":false}]`,
+			want: map[string]*bool{"Wiki": new(true), "Notes": new(false)},
 		},
 		{
-			name:    "name ignores case",
-			matchOn: config.StatusMatchName,
-			body:    `[{"key":"plex","up":true}]`,
-			want:    map[string]*bool{"Grafana": nil, "Plex": new(true), "Docs": nil},
+			name: "a URL beats the host for the same service",
+			body: `[{"key":"home.lan","up":false},{"key":"https://home.lan/wiki","up":true}]`,
+			want: map[string]*bool{"Wiki": new(true), "Notes": new(false)},
 		},
 		{
-			name:    "id is exact",
-			matchOn: config.StatusMatchID,
-			body:    `[{"key":"docs","up":false},{"key":"Grafana","up":true}]`,
-			want:    map[string]*bool{"Grafana": nil, "Plex": nil, "Docs": new(false)},
+			name: "a plain word matches the name, ignoring case",
+			body: `[{"key":"plex","up":true},{"key":"DOCS","up":false}]`,
+			want: map[string]*bool{"Plex": new(true), "Docs": new(false), "Grafana": nil},
 		},
 		{
-			name:    "duplicate keys resolve to down",
-			matchOn: config.StatusMatchHost,
-			body:    `[{"key":"grafana.home","up":true},{"key":"https://grafana.home","up":false}]`,
-			want:    map[string]*bool{"Grafana": new(false), "Plex": nil, "Docs": nil},
+			name: "duplicate keys resolve to down",
+			body: `[{"key":"grafana.home","up":true},{"key":"https://grafana.home","up":false}]`,
+			want: map[string]*bool{"Grafana": new(false), "Plex": nil},
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			p := newStatusProvider(t, "mon", tt.matchOn, &statusServer{body: tt.body})
+			p := newStatusProvider(t, "mon", &statusServer{body: tt.body})
 			got := statusByName(statusRegistry(t, services, WithStatusProviders(p)).Services())
 			for name, want := range tt.want {
 				st := got[name]
@@ -137,9 +128,9 @@ func TestServicesMatchStatusByKey(t *testing.T) {
 }
 
 func TestFirstMatchingStatusProviderWins(t *testing.T) {
-	first := newStatusProvider(t, "first", config.StatusMatchHost,
+	first := newStatusProvider(t, "first",
 		&statusServer{body: `[{"key":"a.home","up":false}]`})
-	second := newStatusProvider(t, "second", config.StatusMatchHost,
+	second := newStatusProvider(t, "second",
 		&statusServer{body: `[{"key":"a.home","up":true},{"key":"b.home","up":true}]`})
 	reg := statusRegistry(t, []compass.Service{
 		{Name: "A", URL: "https://a.home"},
@@ -157,7 +148,7 @@ func TestFirstMatchingStatusProviderWins(t *testing.T) {
 
 func TestFailedStatusRefreshKeepsLastSnapshot(t *testing.T) {
 	srv := &statusServer{body: `[{"key":"a.home","up":true}]`}
-	p := newStatusProvider(t, "mon", config.StatusMatchHost, srv)
+	p := newStatusProvider(t, "mon", srv)
 	reg := statusRegistry(t, []compass.Service{{Name: "A", URL: "https://a.home"}},
 		WithStatusProviders(p))
 
@@ -184,7 +175,7 @@ func TestFailedStatusRefreshKeepsLastSnapshot(t *testing.T) {
 }
 
 func TestServicesStatusIsNotShared(t *testing.T) {
-	p := newStatusProvider(t, "mon", config.StatusMatchHost,
+	p := newStatusProvider(t, "mon",
 		&statusServer{body: `[{"key":"a.home","up":true}]`})
 	reg := statusRegistry(t, []compass.Service{{Name: "A", URL: "https://a.home"}},
 		WithStatusProviders(p))
@@ -197,7 +188,7 @@ func TestServicesStatusIsNotShared(t *testing.T) {
 }
 
 func TestDiscoveryExplanationsDescribeStatusMatch(t *testing.T) {
-	p := newStatusProvider(t, "mon", config.StatusMatchHost,
+	p := newStatusProvider(t, "mon",
 		&statusServer{body: `[{"key":"a.home:8080","up":false}]`})
 	reg := statusRegistry(t, []compass.Service{
 		{ID: "a", Name: "A", URL: "http://a.home:8080"},
@@ -210,7 +201,7 @@ func TestDiscoveryExplanationsDescribeStatusMatch(t *testing.T) {
 	}
 	want := map[string]string{
 		"a": `Status: down, reported by mon (matched host "a.home:8080")`,
-		"b": `No status: no check in mon matched host "b.home"`,
+		"b": `No status: no check matched host "b.home", name "b"`,
 	}
 	for id, step := range want {
 		got := steps[id]

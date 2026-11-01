@@ -10,9 +10,10 @@ ui:
 status:
   - type: json
     name: e2e
-    endpoint: http://127.0.0.1:18081/
+    url: http://127.0.0.1:18081/
     interval: 1s
-    mapping: { match: host, up: up }
+    service: host
+    up: up
 
 services:
   sources:

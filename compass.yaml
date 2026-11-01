@@ -99,19 +99,20 @@ ui:
 
 # ──────────────────────────────────────────────────────────────────
 # Status — up/down dots read from monitoring you already run.
-# Services are matched by URL host; unmatched services show no dot.
+# Matched to services by URL, host, or name; unmatched services show no dot.
 # ──────────────────────────────────────────────────────────────────
 
 # status:
 #   - type: prometheus                  # blackbox: probe_success{instance=...}
 #     url: http://prometheus:9090
 #     # query: probe_success            # default
-#     # match_label: instance           # default; monitor_url for Uptime Kuma
 #   - type: gatus
 #     url: http://gatus:8080
 #   - type: json                        # any JSON endpoint
-#     endpoint: https://health.internal/checks
-#     mapping: { items_path: checks, match: url, up: ok }
+#     url: https://health.internal/api/checks
+#     items: checks                     # where the checks are
+#     service: url                      # which service each check is about
+#     up: state                         # "up", "ok", "healthy", true, 1 = up
 
 # ──────────────────────────────────────────────────────────────────
 # Discovery sources + post-aggregation filters.

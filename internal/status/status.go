@@ -20,22 +20,23 @@ import (
 
 const maxResponseBytes = 10 << 20
 
-// Check is one result from a provider: the raw value to match a service
-// against (per the provider's MatchOn) and whether it is up.
+// Check is one result from a provider: the URL, host, or name of the
+// service it is about, and whether it is up.
 type Check struct {
-	Match string
-	Up    bool
+	Service string
+	Up      bool
 }
 
 type Provider struct {
-	name     string
-	typ      string
-	endpoint string
-	headers  map[string]string
-	interval time.Duration
-	matchOn  string
-	mapping  config.StatusMappingConfig
-	client   *http.Client
+	name        string
+	typ         string
+	endpoint    string
+	headers     map[string]string
+	interval    time.Duration
+	itemsPath   string
+	servicePath string
+	upPath      string
+	client      *http.Client
 }
 
 // New builds a provider from a validated, defaulted config entry.
@@ -46,25 +47,25 @@ func New(cfg config.StatusConfig, client *http.Client) *Provider {
 	// config.validate already rejected non-positive or unparsable intervals.
 	interval, _ := time.ParseDuration(cfg.Interval)
 	return &Provider{
-		name:     cfg.Name,
-		typ:      cfg.Type,
-		endpoint: cfg.Endpoint,
-		headers:  cfg.Headers,
-		interval: interval,
-		matchOn:  cfg.MatchOn,
-		mapping:  cfg.Mapping,
-		client:   client,
+		name:        cfg.Name,
+		typ:         cfg.Type,
+		endpoint:    cfg.Endpoint,
+		headers:     cfg.Headers,
+		interval:    interval,
+		itemsPath:   cfg.Items,
+		servicePath: cfg.Service,
+		upPath:      cfg.Up,
+		client:      client,
 	}
 }
 
 func (p *Provider) Name() string            { return p.name }
 func (p *Provider) Type() string            { return p.typ }
 func (p *Provider) Interval() time.Duration { return p.interval }
-func (p *Provider) MatchOn() string         { return p.matchOn }
 
 // Fetch requests the endpoint and maps each item to a Check. Items with no
-// match value, or whose up value is missing or not interpretable, are
-// skipped rather than reported as down.
+// service value, or whose up value is missing or composite, are skipped
+// rather than reported as down.
 func (p *Provider) Fetch(ctx context.Context) ([]Check, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, p.endpoint, nil)
 	if err != nil {
@@ -94,39 +95,45 @@ func (p *Provider) Fetch(ctx context.Context) ([]Check, error) {
 			maxResponseBytes,
 		)
 	}
-	items, err := meta.JSONItems(payload, p.mapping.ItemsPath, p.mapping.ItemsMode)
+	items, err := meta.JSONItems(payload, p.itemsPath, "")
 	if err != nil {
 		return nil, fmt.Errorf("status %s: map response: %w", p.name, err)
 	}
 	checks := make([]Check, 0, len(items))
 	for _, item := range items {
-		match := item.Get(meta.JSONPath(p.mapping.Match))
-		if !match.Exists() || match.IsArray() || match.IsObject() ||
-			strings.TrimSpace(match.String()) == "" {
+		service := item.Get(meta.JSONPath(p.servicePath))
+		if !service.Exists() || service.IsArray() || service.IsObject() ||
+			strings.TrimSpace(service.String()) == "" {
 			continue
 		}
-		up, ok := p.up(item.Get(meta.JSONPath(p.mapping.Up)))
+		up, ok := isUp(item.Get(meta.JSONPath(p.upPath)))
 		if !ok {
 			continue
 		}
-		checks = append(checks, Check{Match: match.String(), Up: up})
+		checks = append(checks, Check{Service: service.String(), Up: up})
 	}
 	return checks, nil
 }
 
-func (p *Provider) up(value gjson.Result) (up, ok bool) {
-	if !value.Exists() {
-		return false, false
-	}
-	if p.mapping.UpValue != "" {
-		return value.String() == p.mapping.UpValue, true
-	}
+// isUp interprets a check result by convention: true, a non-zero number,
+// or one of upWords (any case) is up; any other scalar is down. Missing,
+// null, and composite values are not a result at all.
+func isUp(value gjson.Result) (up, ok bool) {
 	switch value.Type {
 	case gjson.True:
 		return true, true
 	case gjson.False:
 		return false, true
+	case gjson.Number:
+		return value.Num != 0, true
+	case gjson.String:
+		_, up := upWords[strings.ToLower(strings.TrimSpace(value.Str))]
+		return up, true
 	default:
 		return false, false
 	}
+}
+
+var upWords = map[string]struct{}{
+	"1": {}, "true": {}, "up": {}, "ok": {}, "healthy": {},
 }
