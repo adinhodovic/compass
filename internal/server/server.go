@@ -27,6 +27,10 @@ import (
 //go:embed templates
 var templatesFS embed.FS
 
+// Version is the running Compass version shown in the footer. Set by the
+// binary before New; empty in tests and plain `go build`s.
+var Version string
+
 //go:embed static
 var staticFS embed.FS
 
@@ -92,6 +96,7 @@ type Base struct {
 	PrimaryColor    string
 	HeaderLinks     []config.LinkConfig
 	FooterLinks     []config.LinkConfig
+	Version         string
 	Meta            Meta
 }
 
@@ -383,6 +388,7 @@ func (s Server) baseData(r *http.Request) Base {
 		PrimaryColor:    s.cfg.UI.PrimaryColor,
 		HeaderLinks:     s.cfg.HeaderLinks,
 		FooterLinks:     s.cfg.FooterLinks,
+		Version:         Version,
 		Meta: Meta{
 			Title:       org.Name,
 			Description: org.Description,

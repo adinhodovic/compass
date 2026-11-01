@@ -75,39 +75,39 @@
 {{define "base-end"}}
 </main>
 {{$siteLogo := logo .Organization.Logo .Organization.Name "organization"}}
-<footer class="footer footer-center bg-base-200 text-base-content/60 p-6 mt-12 text-sm">
-  <aside class="flex flex-col items-center gap-3 sm:flex-row sm:flex-wrap sm:justify-center">
-    <a class="link-hover inline-flex items-center gap-2 font-medium text-base-content/80" href="/" aria-label="{{.Organization.Name}} home">
-      {{if .Organization.FullLogo}}
-      {{$fullLogo := logo .Organization.FullLogo .Organization.Name "organization"}}
-      {{if eq $fullLogo.Kind "image"}}
-      <img src="{{$fullLogo.URL}}" alt="{{.Organization.Name}}" class="h-3.5 max-w-24 object-contain" loading="lazy">
-      {{else}}
-      <span>{{$fullLogo.Text}}</span>
-      {{end}}
-      {{else}}
-      {{if eq $siteLogo.Kind "image"}}
-      <span class="avatar"><span class="size-3.5 rounded"><img src="{{$siteLogo.URL}}" alt="" loading="lazy"></span></span>
-      {{else}}
-      <span class="avatar avatar-placeholder"><span class="size-3.5 rounded bg-neutral text-[8px] text-neutral-content">{{$siteLogo.Text}}</span></span>
-      {{end}}
-      <span>{{.Organization.Name}}</span>
-      {{end}}
-    </a>
-    <span class="hidden sm:inline" aria-hidden="true">·</span>
-    <nav class="flex flex-wrap items-center justify-center gap-x-3 gap-y-1" aria-label="Site">
+<footer class="mt-12 border-t border-base-300 bg-base-200 text-sm text-base-content/70">
+  <div class="container mx-auto grid items-center gap-3 px-4 py-5 sm:grid-cols-[1fr_auto_1fr]">
+    <div class="flex items-center justify-center sm:justify-start">
+      <a class="link-hover inline-flex items-center gap-2 font-semibold text-base-content" href="/" aria-label="{{.Organization.Name}} home">
+        {{if .Organization.FullLogo}}
+        {{$fullLogo := logo .Organization.FullLogo .Organization.Name "organization"}}
+        {{if eq $fullLogo.Kind "image"}}
+        <img src="{{$fullLogo.URL}}" alt="{{.Organization.Name}}" class="h-4 max-w-28 object-contain" loading="lazy">
+        {{else}}
+        <span>{{$fullLogo.Text}}</span>
+        {{end}}
+        {{else}}
+        {{if eq $siteLogo.Kind "image"}}
+        <span class="avatar"><span class="size-4 rounded"><img src="{{$siteLogo.URL}}" alt="" loading="lazy"></span></span>
+        {{else}}
+        <span class="avatar avatar-placeholder"><span class="size-4 rounded bg-neutral text-[8px] text-neutral-content">{{$siteLogo.Text}}</span></span>
+        {{end}}
+        <span>{{.Organization.Name}}</span>
+        {{end}}
+      </a>
+    </div>
+    <nav class="flex flex-wrap items-center justify-center gap-x-2 gap-y-1" aria-label="Site">
       <a class="link link-hover" href="/services">Services</a>
-      {{if .DebugVisible}}<a class="link link-hover" href="/debug">Debug</a>{{end}}
+      {{if .DebugVisible}}<span class="text-base-content/30" aria-hidden="true">·</span><a class="link link-hover" href="/debug">Debug</a>{{end}}
       {{range .FooterLinks}}
-      <a class="link link-hover" href="{{.URL}}"{{if .OpensInNewTab}} target="_blank" rel="noopener"{{end}}>{{.Label}}</a>
+      <span class="text-base-content/30" aria-hidden="true">·</span><a class="link link-hover" href="{{.URL}}"{{if .OpensInNewTab}} target="_blank" rel="noopener"{{end}}>{{.Label}}</a>
       {{end}}
     </nav>
-    <span class="hidden sm:inline" aria-hidden="true">·</span>
-    <nav class="flex flex-wrap items-center justify-center gap-x-3 gap-y-1" aria-label="Resources">
-      <a class="link link-hover" href="https://adinhodovic.github.io/compass" target="_blank" rel="noopener">Documentation</a>
-      <a class="link link-hover" href="https://github.com/adinhodovic/compass" target="_blank" rel="noopener">Compass</a>
-    </nav>
-  </aside>
+    <p class="text-center text-xs text-base-content/50 sm:text-right">
+      <a class="link link-hover" href="https://github.com/adinhodovic/compass" target="_blank" rel="noopener">Compass</a>{{with .Version}} {{.}}{{end}}
+      · <a class="link link-hover" href="https://adinhodovic.github.io/compass" target="_blank" rel="noopener">Docs</a>
+    </p>
+  </div>
 </footer>
 <div class="toast toast-end z-50" x-show="toast.show" x-transition>
   <div class="alert alert-success">

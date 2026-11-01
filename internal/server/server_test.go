@@ -1119,3 +1119,23 @@ func TestDetailHandlerNotFoundForUnknownID(t *testing.T) {
 		t.Fatalf("expected 404, got %d", resp.Code)
 	}
 }
+
+func TestFooterShowsVersionAndLinks(t *testing.T) {
+	Version = "1.2.3"
+	t.Cleanup(func() { Version = "" })
+	handler := New(config.Config{
+		FooterLinks: []config.LinkConfig{{Label: "Status", URL: "https://status.example.com"}},
+	}, staticProvider{}, discardLogger())
+
+	resp := httptest.NewRecorder()
+	handler.ServeHTTP(resp, httptest.NewRequest(http.MethodGet, "/services", nil))
+	body := resp.Body.String()
+	for _, want := range []string{
+		`target="_blank" rel="noopener">Compass</a> 1.2.3`,
+		`<span class="text-base-content/30" aria-hidden="true">·</span><a class="link link-hover" href="https://status.example.com" target="_blank" rel="noopener">Status</a>`,
+	} {
+		if !strings.Contains(body, want) {
+			t.Fatalf("expected footer to contain %q", want)
+		}
+	}
+}
