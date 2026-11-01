@@ -138,8 +138,10 @@ jobs:
           restore-keys: |
             playwright-${{ runner.os }}-
 
-      - name: Install npm dependencies
-        run: npm ci
+      # Playwright starts the server with `go run` and a 20s timeout;
+      # building first warms the Go build cache so startup fits.
+      - name: Build binary
+        run: make build
 
       - name: Install Playwright browser
         # GitHub-hosted Ubuntu images already provide Chromium's system
