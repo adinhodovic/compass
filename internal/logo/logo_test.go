@@ -23,7 +23,15 @@ func TestResolveSelfhstBackCompatLogo(t *testing.T) {
 func TestResolveIconifyLogo(t *testing.T) {
 	logo := Resolve("simple-icons:grafana", "Grafana", "manual")
 
-	if logo.Kind != "image" || logo.URL != "https://api.iconify.design/simple-icons:grafana.svg" {
+	if logo.Kind != "image" || logo.URL != "https://api.iconify.design/simple-icons/grafana.svg" {
+		t.Fatalf("unexpected logo: %#v", logo)
+	}
+}
+
+func TestResolveIconifyPrefixedLogo(t *testing.T) {
+	logo := Resolve("iconify:simple-icons:github", "GitHub", "manual")
+
+	if logo.Kind != "image" || logo.URL != "https://api.iconify.design/simple-icons/github.svg" {
 		t.Fatalf("unexpected logo: %#v", logo)
 	}
 }
@@ -71,7 +79,7 @@ func TestResolveDockerSourceLogo(t *testing.T) {
 func TestResolveGenericSourceFallback(t *testing.T) {
 	logo := Resolve("", "Unknown App", "custom")
 
-	if logo.URL != "https://api.iconify.design/lucide:app-window.svg" {
+	if logo.URL != "https://api.iconify.design/lucide/app-window.svg" {
 		t.Fatalf("unexpected generic source logo: %#v", logo)
 	}
 }
