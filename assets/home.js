@@ -1,5 +1,5 @@
 // compassHome backs the services dashboard at "/" — search, tag/source/status
-// filters, favorites/recents, group-by, and pagination. It is the largest
+// filters, favorites/recents, group-by, and per-group "show more". It is the largest
 // Alpine factory by far; keeping it here isolates that complexity from
 // the smaller per-page factories in factories.js.
 
@@ -26,8 +26,6 @@ export function compassHome() {
     pageSize: 9,
     groupShown: {},
     collapsedGroups: {},
-    groupsPage: 1,
-    groupsPerPage: 5,
     services: [],
     tagOptions: [],
     tagCounts: {},
@@ -83,10 +81,10 @@ export function compassHome() {
       const sortParam = url.searchParams.get('sort');
       this.sortMode = COMPASS_SORT_MODES.includes(sortParam) ? sortParam : 'name';
       this.$watch('sortMode', () => { this.syncURL(); });
-      this.$watch('q', () => { this.resetGroupShown(); this.groupsPage = 1; this.persistFilters(); this.syncURL(); });
-      this.$watch('tags', () => { this.resetGroupShown(); this.groupsPage = 1; this.persistFilters(); this.syncURL(); });
-      this.$watch('sources', () => { this.resetGroupShown(); this.groupsPage = 1; this.persistFilters(); this.syncURL(); });
-      this.$watch('statusFilter', () => { this.resetGroupShown(); this.groupsPage = 1; this.persistFilters(); this.syncURL(); });
+      this.$watch('q', () => { this.resetGroupShown(); this.persistFilters(); this.syncURL(); });
+      this.$watch('tags', () => { this.resetGroupShown(); this.persistFilters(); this.syncURL(); });
+      this.$watch('sources', () => { this.resetGroupShown(); this.persistFilters(); this.syncURL(); });
+      this.$watch('statusFilter', () => { this.resetGroupShown(); this.persistFilters(); this.syncURL(); });
       this.$watch('favorites', (v) => storageSet(this.storage.favorites, JSON.stringify(v)));
       this.$watch('recents', (v) => storageSet(this.storage.recents, JSON.stringify(v)));
       this.$watch('collapsedGroups', (v) => storageSet(this.storage.collapsed, JSON.stringify(v)));
@@ -131,27 +129,8 @@ export function compassHome() {
     groupCollapsed(name) {
       return !!this.collapsedGroups[name];
     },
-    groupOnPage(index) {
-      if (this.hasFilters()) return true;
-      const start = (this.groupsPage - 1) * this.groupsPerPage;
-      return index >= start && index < start + this.groupsPerPage;
-    },
     hasFilters() {
       return !!(this.q || this.tags.length || this.sources.length || this.statusFilter);
-    },
-    groupsTotalPages(totalGroups) {
-      return Math.max(1, Math.ceil(totalGroups / this.groupsPerPage));
-    },
-    groupsPageLabel(totalGroups) {
-      return this.groupsPage + ' / ' + this.groupsTotalPages(totalGroups);
-    },
-    nextGroupsPage(totalGroups) {
-      this.groupsPage = Math.min(this.groupsPage + 1, this.groupsTotalPages(totalGroups));
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-    },
-    prevGroupsPage() {
-      this.groupsPage = Math.max(this.groupsPage - 1, 1);
-      window.scrollTo({ top: 0, behavior: 'smooth' });
     },
     toggleFavorite(id) {
       const index = this.favorites.indexOf(id);
@@ -335,19 +314,12 @@ export function compassHome() {
     groupHasMore(ids, group) {
       return this.filteredGroupIDs(ids).length > this.groupShownCount(group);
     },
-    groupHiddenCount(ids, group) {
-      return Math.max(0, this.filteredGroupIDs(ids).length - this.groupShownCount(group));
-    },
     visibleInGroup(id, ids, group) {
       const filtered = this.filteredGroupIDs(ids);
       return filtered.slice(0, this.groupShownCount(group)).includes(id);
     },
-    showMore(group, ids) {
-      const total = this.filteredGroupIDs(ids).length;
-      this.groupShown = {
-        ...this.groupShown,
-        [group]: Math.min(this.groupShownCount(group) + this.pageSize, total),
-      };
+    showAll(group) {
+      this.groupShown = { ...this.groupShown, [group]: Infinity };
     },
     resetGroupShown() {
       this.groupShown = {};
