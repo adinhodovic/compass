@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -202,5 +203,40 @@ func TestServicesWithoutStatusProviders(t *testing.T) {
 	}
 	if providers := reg.StatusProviders(); len(providers) != 0 {
 		t.Fatalf("expected no providers, got %+v", providers)
+	}
+}
+
+func TestDiscoveryExplanationsDescribeStatusMatch(t *testing.T) {
+	p := newStatusProvider(t, "mon", config.StatusMatchHost,
+		&statusServer{body: `[{"key":"a.home:8080","up":false}]`})
+	reg := statusRegistry(t, []compass.Service{
+		{ID: "a", Name: "A", URL: "http://a.home:8080"},
+		{ID: "b", Name: "B", URL: "https://b.home"},
+	}, WithStatusProviders(p))
+
+	steps := map[string][]string{}
+	for _, explanation := range reg.DiscoveryExplanations() {
+		steps[explanation.ID] = explanation.Steps
+	}
+	want := map[string]string{
+		"a": `Status: down, reported by mon (matched host "a.home:8080")`,
+		"b": `No status: no check in mon matched host "b.home"`,
+	}
+	for id, step := range want {
+		got := steps[id]
+		if len(got) == 0 || got[len(got)-1] != step {
+			t.Errorf("%s: expected last step %q, got %q", id, step, got)
+		}
+	}
+}
+
+func TestDiscoveryExplanationsSkipStatusWithoutProviders(t *testing.T) {
+	reg := statusRegistry(t, []compass.Service{{ID: "a", Name: "A", URL: "https://a.home"}})
+	for _, explanation := range reg.DiscoveryExplanations() {
+		for _, step := range explanation.Steps {
+			if strings.Contains(step, "tatus") {
+				t.Fatalf("unexpected status step without providers: %q", step)
+			}
+		}
 	}
 }

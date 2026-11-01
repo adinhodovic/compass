@@ -15,9 +15,10 @@ and [Pages](pages.md).
 A per-source health view. For every configured source it shows a
 status badge (`ok` / `error` / `pending`), the service count and last
 load time, the discovery output as a table, and the error message when
-the last refresh failed. Published services include a **Why included**
-section that explains registry decisions such as URL normalization, generated
-IDs, catalog backfills, and invalid link or panel removal. Dropped services
+the last refresh failed. Published services include a **Discovery details**
+section listing what Compass did with each one: URL rewrites, generated IDs,
+catalog backfills, dropped links or panels, and which status provider (if
+any) matched it. Dropped services
 show the validation or filter reason that removed them.
 
 When [status providers](configuration.md#status) are configured, a

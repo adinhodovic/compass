@@ -2,6 +2,7 @@ package registry
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 	"net"
 	"net/url"
@@ -166,6 +167,57 @@ func (r *Registry) applyStatuses(services []compass.Service) {
 			break
 		}
 	}
+}
+
+// explainStatuses appends a status step to each explanation so /debug says
+// which provider set a service's dot, or which keys were tried when none
+// matched. Providers that have not fetched successfully yet are skipped.
+func (r *Registry) explainStatuses(explanations []ServiceExplanation) {
+	if len(r.statuses) == 0 {
+		return
+	}
+	services := make(map[string]compass.Service)
+	for _, service := range r.Services() {
+		services[service.ID] = service
+	}
+	for i := range explanations {
+		service, ok := services[explanations[i].ID]
+		if !ok {
+			continue
+		}
+		if step := r.statusStep(service); step != "" {
+			explanations[i].Steps = append(explanations[i].Steps, step)
+		}
+	}
+}
+
+func (r *Registry) statusStep(service compass.Service) string {
+	var tried []string
+	for _, st := range r.statuses {
+		if st.snapshot.Load() == nil {
+			continue
+		}
+		name, matchOn := st.provider.Name(), st.provider.MatchOn()
+		key := serviceStatusKey(service, matchOn)
+		if service.Status != nil && service.Status.Provider == name {
+			state := "down"
+			if service.Status.Up {
+				state = "up"
+			}
+			return fmt.Sprintf(
+				"Status: %s, reported by %s (matched %s %q)",
+				state,
+				name,
+				matchOn,
+				key,
+			)
+		}
+		tried = append(tried, fmt.Sprintf("no check in %s matched %s %q", name, matchOn, key))
+	}
+	if len(tried) == 0 {
+		return ""
+	}
+	return "No status: " + strings.Join(tried, "; ")
 }
 
 func serviceStatusKey(service compass.Service, matchOn string) string {

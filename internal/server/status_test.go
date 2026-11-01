@@ -67,9 +67,12 @@ func TestServerRendersServiceStatus(t *testing.T) {
 	}
 
 	plex := renderPath(t, handler, "/services/plex")
-	if !strings.Contains(plex, "Down · blackbox · checked 1m ago") ||
-		!strings.Contains(plex, "badge-error") {
-		t.Fatal("expected detail page to show Down badge from blackbox")
+	if !strings.Contains(
+		plex,
+		`status-error ring-4 ring-error/25" role="img" aria-label="Down · blackbox · checked 1m ago"`,
+	) ||
+		!strings.Contains(plex, "font-medium text-error") {
+		t.Fatal("expected detail page to show a down dot by the title and a status line")
 	}
 	if docs := renderPath(t, handler, "/services/docs"); strings.Contains(docs, "· checked") {
 		t.Fatal("expected no status badge for a service without status")

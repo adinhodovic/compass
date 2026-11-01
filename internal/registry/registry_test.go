@@ -260,7 +260,7 @@ func TestRegistryDroppedServicesIncludesNormalizationAndFilters(t *testing.T) {
 	if len(explanations) != 1 || explanations[0].ID != loaded[0].ID {
 		t.Fatalf("expected explanation for published service, got %#v", explanations)
 	}
-	if len(explanations[0].Steps) == 0 || explanations[0].Steps[0] != "Accepted and published" {
+	if len(explanations[0].Steps) == 0 || explanations[0].Steps[0] != "Published to the dashboard" {
 		t.Fatalf("expected accepted explanation, got %#v", explanations[0].Steps)
 	}
 	dropped := reg.DroppedServices()
@@ -306,12 +306,12 @@ func TestNormalizeExplanationReportsRegistryDecisions(t *testing.T) {
 		t.Fatalf("expected explanation ID %q, got %q", service.ID, explanation.ID)
 	}
 	want := []string{
-		"Accepted and published",
-		"URL normalized",
-		"ID generated from source and name",
-		"Catalog filled description, icon, tags",
-		"Removed 1 invalid link(s)",
-		"Removed 1 invalid panel(s)",
+		"Published to the dashboard",
+		`URL rewritten from "grafana.local"`,
+		"No ID set, generated one from source and name",
+		"Filled description, icon, tags from the catalog",
+		"Dropped 1 link with an invalid URL",
+		"Dropped 1 panel with an invalid URL",
 	}
 	for _, step := range want {
 		if !slices.Contains(explanation.Steps, step) {
