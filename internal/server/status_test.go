@@ -90,23 +90,20 @@ func TestServerRendersServiceStatus(t *testing.T) {
 	}
 }
 
-func TestHomeHidesStatusSummaryWithoutStatus(t *testing.T) {
-	handler := New(config.Config{}, staticProvider{{
-		ID: "grafana", Name: "Grafana", URL: "https://grafana.home", Source: "manual",
+func TestServerHidesStatusUIWithoutStatus(t *testing.T) {
+	handler := New(config.Config{}, debugProvider{services: []compass.Service{
+		{ID: "grafana", Name: "Grafana", URL: "https://grafana.home", Source: "manual"},
 	}}, discardLogger())
-	body := renderPath(t, handler, "/services")
-	if strings.Contains(body, " down</span>") ||
-		strings.Contains(body, `x-on:click="statusFilter = 'down'"`) {
+
+	home := renderPath(t, handler, "/services")
+	if strings.Contains(home, " down</span>") ||
+		strings.Contains(home, `x-on:click="statusFilter = 'down'"`) {
 		t.Fatal("expected no status summary or filter when no service has status")
 	}
-	if !strings.Contains(body, "<p>1 service across 1 tag</p>") {
+	if !strings.Contains(home, "<p>1 service across 1 tag</p>") {
 		t.Fatal("expected the plain service count sentence")
 	}
-}
-
-func TestDebugHidesStatusProvidersWhenNoneConfigured(t *testing.T) {
-	handler := New(config.Config{}, debugProvider{}, discardLogger())
-	if body := renderPath(t, handler, "/debug"); strings.Contains(body, "Status providers") {
+	if strings.Contains(renderPath(t, handler, "/debug"), "Status providers") {
 		t.Fatal("expected no status providers section without providers")
 	}
 }

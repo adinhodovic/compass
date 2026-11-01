@@ -28,7 +28,7 @@
         <div class="min-w-0 flex-1">
           <p class="text-xs uppercase font-semibold tracking-wide text-primary">Service</p>
           <div class="mt-1 flex min-w-0 items-center gap-3">
-            {{with .Service.Status}}<span class="tooltip tooltip-top inline-flex shrink-0 leading-none" data-tip="{{template "status-label" .}}"><span class="status size-2.5 shrink-0 {{if .Up}}status-success{{else}}status-error ring-4 ring-error/25{{end}}" role="img" aria-label="{{template "status-label" .}}"></span></span>{{end}}
+            {{template "status-dot" .Service.Status}}
             <h1 class="min-w-0 text-2xl sm:text-3xl font-bold break-words">{{.Service.Name}}</h1>
           </div>
           <div class="mt-3 flex flex-wrap gap-1.5">

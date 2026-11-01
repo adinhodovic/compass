@@ -196,16 +196,6 @@ func TestServicesStatusIsNotShared(t *testing.T) {
 	}
 }
 
-func TestServicesWithoutStatusProviders(t *testing.T) {
-	reg := statusRegistry(t, []compass.Service{{Name: "A", URL: "https://a.home"}})
-	if st := reg.Services()[0].Status; st != nil {
-		t.Fatalf("expected nil status without providers, got %+v", st)
-	}
-	if providers := reg.StatusProviders(); len(providers) != 0 {
-		t.Fatalf("expected no providers, got %+v", providers)
-	}
-}
-
 func TestDiscoveryExplanationsDescribeStatusMatch(t *testing.T) {
 	p := newStatusProvider(t, "mon", config.StatusMatchHost,
 		&statusServer{body: `[{"key":"a.home:8080","up":false}]`})
@@ -230,8 +220,14 @@ func TestDiscoveryExplanationsDescribeStatusMatch(t *testing.T) {
 	}
 }
 
-func TestDiscoveryExplanationsSkipStatusWithoutProviders(t *testing.T) {
+func TestRegistryWithoutStatusProviders(t *testing.T) {
 	reg := statusRegistry(t, []compass.Service{{ID: "a", Name: "A", URL: "https://a.home"}})
+	if st := reg.Services()[0].Status; st != nil {
+		t.Fatalf("expected nil status without providers, got %+v", st)
+	}
+	if providers := reg.StatusProviders(); len(providers) != 0 {
+		t.Fatalf("expected no providers, got %+v", providers)
+	}
 	for _, explanation := range reg.DiscoveryExplanations() {
 		for _, step := range explanation.Steps {
 			if strings.Contains(step, "tatus") {

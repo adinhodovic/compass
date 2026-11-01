@@ -279,7 +279,7 @@
             {{end}}
             <div class="min-w-0 flex-1">
               <div class="flex min-w-0 items-center gap-2">
-                {{with .Status}}<span class="tooltip tooltip-top inline-flex shrink-0 leading-none" data-tip="{{template "status-label" .}}">{{template "status-icon" .}}</span>{{end}}
+                {{template "status-dot" .Status}}
                 <h3 class="card-title truncate">{{.Name}}</h3>
               </div>
               <button class="badge badge-outline badge-sm mt-1 cursor-pointer transition-colors hover:badge-ghost focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary" type="button" data-source="{{.SourceID}}" x-on:click="selectSource($el.dataset.source)" aria-label="Filter by source {{sourceLabel .SourceType .Source}}">{{sourceLabel .SourceType .Source}}</button>

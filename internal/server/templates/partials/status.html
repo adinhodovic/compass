@@ -1,9 +1,6 @@
 {{/* status-label is the accessible text for a compass.Status. */}}
 {{define "status-label"}}{{if .Up}}Up{{else}}Down{{end}} · {{.Provider}} · checked {{timeAgo .CheckedAt}}{{end}}
 
-{{/* status-icon is a green (up) or red (down) daisyUI status dot. Down
-     gets a static halo so a failing service stands out without motion. */}}
-{{define "status-icon"}}{{if .}}<span class="status size-2 shrink-0 {{if .Up}}status-success{{else}}status-error ring-4 ring-error/25{{end}}" role="img" aria-label="{{template "status-label" .}}"></span>{{end}}{{end}}
-
-{{/* status-dot wraps status-icon with a tooltip for tables and lists. */}}
-{{define "status-dot"}}{{if .}}<span class="tooltip tooltip-right inline-flex" data-tip="{{template "status-label" .}}">{{template "status-icon" .}}</span>{{end}}{{end}}
+{{/* status-dot is a green (up) or red (down) daisyUI status dot with a
+     tooltip. Down gets a static halo so it stands out without motion. */}}
+{{define "status-dot"}}{{if .}}<span class="tooltip tooltip-top inline-flex shrink-0 leading-none" data-tip="{{template "status-label" .}}"><span class="status size-2 shrink-0 {{if .Up}}status-success{{else}}status-error ring-4 ring-error/25{{end}}" role="img" aria-label="{{template "status-label" .}}"></span></span>{{end}}{{end}}

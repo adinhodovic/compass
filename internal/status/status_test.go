@@ -11,66 +11,45 @@ import (
 	"testing"
 
 	"github.com/adinhodovic/compass/internal/config"
-	"go.yaml.in/yaml/v3"
 )
 
-func newProvider(t *testing.T, cfg config.StatusConfig, body string, code int) *Provider {
+// newProvider serves body from a test server and builds a provider from a
+// one-line YAML status entry, where URL is replaced with the server's
+// address. Going through config.Load exercises the real preset expansion.
+func newProvider(t *testing.T, entry, body string, code int) (*Provider, *http.Header) {
 	t.Helper()
+	var got http.Header
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if got := r.Header.Get("Authorization"); cfg.Headers["Authorization"] != "" &&
-			got != cfg.Headers["Authorization"] {
-			t.Errorf("Authorization header = %q", got)
-		}
+		got = r.Header.Clone()
 		w.WriteHeader(code)
 		_, _ = w.Write([]byte(body))
 	}))
 	t.Cleanup(srv.Close)
-	cfg.URL = srv.URL
-	if cfg.Type == config.StatusTypeJSON || cfg.Type == "" {
-		cfg.Endpoint = srv.URL
-	}
-	return New(defaulted(t, cfg), srv.Client())
-}
-
-// defaulted round-trips cfg through config.Load so tests exercise the
-// same preset expansion and validation as the binary.
-func defaulted(t *testing.T, cfg config.StatusConfig) config.StatusConfig {
-	t.Helper()
-	entry, err := yaml.Marshal([]config.StatusConfig{cfg})
-	if err != nil {
-		t.Fatal(err)
-	}
-	doc := "services:\n  sources:\n    - type: static\n      name: manual\n" +
-		"status:\n" + indent(string(entry))
+	doc := "services: {sources: [{type: static, name: manual}]}\n" +
+		"status: [" + strings.ReplaceAll(entry, "URL", srv.URL) + "]\n"
 	path := filepath.Join(t.TempDir(), "compass.yaml")
 	if err := os.WriteFile(path, []byte(doc), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	loaded, err := config.Load(path)
+	cfg, err := config.Load(path)
 	if err != nil {
 		t.Fatalf("config.Load: %v", err)
 	}
-	return loaded.Status[0]
+	return New(cfg.Status[0], srv.Client()), &got
 }
 
-func indent(s string) string {
-	lines := strings.Split(strings.TrimRight(s, "\n"), "\n")
-	for i := range lines {
-		lines[i] = "  " + lines[i]
-	}
-	return strings.Join(lines, "\n") + "\n"
-}
+const jsonEntry = "{endpoint: URL, mapping: {match: host, up: ok}}"
 
 func TestFetchMapsChecks(t *testing.T) {
 	tests := []struct {
-		name string
-		cfg  config.StatusConfig
-		body string
-		want []Check
+		name  string
+		entry string
+		body  string
+		want  []Check
 	}{
 		{
-			name: "prometheus preset",
-			cfg:  config.StatusConfig{Type: config.StatusTypePrometheus},
+			name:  "prometheus preset",
+			entry: "{type: prometheus, url: URL}",
 			body: `{"status":"success","data":{"resultType":"vector","result":[
 				{"metric":{"instance":"https://grafana.home"},"value":[1730000000,"1"]},
 				{"metric":{"instance":"https://plex.home"},"value":[1730000000,"0"]},
@@ -82,8 +61,8 @@ func TestFetchMapsChecks(t *testing.T) {
 			},
 		},
 		{
-			name: "gatus preset reads newest result",
-			cfg:  config.StatusConfig{Type: config.StatusTypeGatus},
+			name:  "gatus preset reads newest result",
+			entry: "{type: gatus, url: URL}",
 			body: `[
 				{"name":"grafana","results":[
 					{"hostname":"grafana.home","success":false},
@@ -94,10 +73,8 @@ func TestFetchMapsChecks(t *testing.T) {
 			want: []Check{{Match: "grafana.home", Up: true}},
 		},
 		{
-			name: "json booleans without up_value",
-			cfg: config.StatusConfig{
-				Mapping: config.StatusMappingConfig{ItemsPath: "checks", Match: "host", Up: "ok"},
-			},
+			name:  "json booleans without up_value",
+			entry: "{endpoint: URL, mapping: {items_path: checks, match: host, up: ok}}",
 			body: `{"checks":[
 				{"host":"a.home","ok":true},
 				{"host":"b.home","ok":false},
@@ -108,19 +85,15 @@ func TestFetchMapsChecks(t *testing.T) {
 			want: []Check{{Match: "a.home", Up: true}, {Match: "b.home", Up: false}},
 		},
 		{
-			name: "json up_value with items_mode values",
-			cfg: config.StatusConfig{
-				Mapping: config.StatusMappingConfig{
-					ItemsMode: "values", Match: "url", Up: "state", UpValue: "UP",
-				},
-			},
-			body: `{"x":{"url":"https://a.home","state":"UP"}}`,
-			want: []Check{{Match: "https://a.home", Up: true}},
+			name:  "json up_value with items_mode values",
+			entry: "{endpoint: URL, mapping: {items_mode: values, match: url, up: state, up_value: UP}}",
+			body:  `{"x":{"url":"https://a.home","state":"UP"}}`,
+			want:  []Check{{Match: "https://a.home", Up: true}},
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			p := newProvider(t, tt.cfg, tt.body, http.StatusOK)
+			p, _ := newProvider(t, tt.entry, tt.body, http.StatusOK)
 			got, err := p.Fetch(context.Background())
 			if err != nil {
 				t.Fatalf("Fetch: %v", err)
@@ -133,12 +106,14 @@ func TestFetchMapsChecks(t *testing.T) {
 }
 
 func TestFetchSendsHeaders(t *testing.T) {
-	p := newProvider(t, config.StatusConfig{
-		Headers: map[string]string{"Authorization": "Bearer t"},
-		Mapping: config.StatusMappingConfig{Match: "host", Up: "ok"},
-	}, `[]`, http.StatusOK)
+	p, got := newProvider(t,
+		"{endpoint: URL, headers: {Authorization: Bearer t}, mapping: {match: host, up: ok}}",
+		`[]`, http.StatusOK)
 	if _, err := p.Fetch(context.Background()); err != nil {
 		t.Fatalf("Fetch: %v", err)
+	}
+	if auth := got.Get("Authorization"); auth != "Bearer t" {
+		t.Fatalf("Authorization header = %q", auth)
 	}
 }
 
@@ -164,9 +139,7 @@ func TestFetchErrors(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			p := newProvider(t, config.StatusConfig{
-				Mapping: config.StatusMappingConfig{Match: "host", Up: "ok"},
-			}, tt.body, tt.code)
+			p, _ := newProvider(t, jsonEntry, tt.body, tt.code)
 			_, err := p.Fetch(context.Background())
 			if err == nil || !strings.Contains(err.Error(), tt.wantErr) {
 				t.Fatalf("expected %q, got %v", tt.wantErr, err)
@@ -176,9 +149,7 @@ func TestFetchErrors(t *testing.T) {
 }
 
 func TestFetchHonorsContextCancellation(t *testing.T) {
-	p := newProvider(t, config.StatusConfig{
-		Mapping: config.StatusMappingConfig{Match: "host", Up: "ok"},
-	}, `[]`, http.StatusOK)
+	p, _ := newProvider(t, jsonEntry, `[]`, http.StatusOK)
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
 	if _, err := p.Fetch(ctx); err == nil || !strings.Contains(err.Error(), "context canceled") {

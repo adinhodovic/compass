@@ -1,6 +1,7 @@
 package config
 
 import (
+	"reflect"
 	"strings"
 	"testing"
 )
@@ -125,10 +126,7 @@ func TestSetStatusDefaultsExpandsPresets(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			got := tt.in
 			setStatusDefaults(&got)
-			if got.Name != tt.want.Name || got.Type != tt.want.Type || got.URL != tt.want.URL ||
-				got.Query != tt.want.Query || got.MatchLabel != tt.want.MatchLabel ||
-				got.Endpoint != tt.want.Endpoint || got.Interval != tt.want.Interval ||
-				got.MatchOn != tt.want.MatchOn || got.Mapping != tt.want.Mapping {
+			if !reflect.DeepEqual(got, tt.want) {
 				t.Fatalf("got %+v\nwant %+v", got, tt.want)
 			}
 		})
