@@ -4,11 +4,13 @@ import (
 	"bytes"
 	"fmt"
 	"net"
+	"net/url"
 	"os"
 	pathpkg "path"
 	"path/filepath"
 	"regexp"
 	"strings"
+	"time"
 
 	"github.com/adinhodovic/compass/internal/compass"
 	"go.yaml.in/yaml/v3"
@@ -27,6 +29,7 @@ type Config struct {
 	HeaderLinks  []LinkConfig       `yaml:"header_links"`
 	FooterLinks  []LinkConfig       `yaml:"footer_links"`
 	Services     ServicesConfig     `yaml:"services"`
+	Status       []StatusConfig     `yaml:"status"`
 }
 
 // DebugConfig toggles operator-only routes. Default-on so existing
@@ -439,6 +442,63 @@ type MappingConfig struct {
 	Fields    map[string]string `yaml:"fields"`
 }
 
+// Status provider types. "json" is the generic provider every entry runs
+// as; the others are presets that setDefaults expands into json form.
+const (
+	StatusTypeJSON       = "json"
+	StatusTypePrometheus = "prometheus"
+	StatusTypeGatus      = "gatus"
+)
+
+// Status match keys: which part of a service is compared against the
+// provider's match value.
+const (
+	StatusMatchHost = "host"
+	StatusMatchURL  = "url"
+	StatusMatchName = "name"
+	StatusMatchID   = "id"
+)
+
+// StatusConfig is one entry under `status:`. Every entry is fetched as a
+// JSON endpoint and mapped with gjson paths; the prometheus and gatus
+// types only fill in Endpoint and Mapping defaults from URL (and Query /
+// MatchLabel), and any explicitly set mapping field wins.
+type StatusConfig struct {
+	Type string `yaml:"type"`
+	Name string `yaml:"name"`
+	// URL is the base URL for preset types (Prometheus or Gatus root).
+	URL string `yaml:"url"`
+	// Query is the PromQL instant query for type prometheus. Defaults to
+	// probe_success (blackbox exporter).
+	Query string `yaml:"query"`
+	// MatchLabel is the Prometheus series label compared against services.
+	// Defaults to instance.
+	MatchLabel string `yaml:"match_label"`
+	// Endpoint is the JSON URL to fetch. Required for type json; derived
+	// from URL for presets.
+	Endpoint string            `yaml:"endpoint"`
+	Headers  map[string]string `yaml:"headers"`
+	// Interval between fetches. Defaults to 30s.
+	Interval string `yaml:"interval"`
+	// MatchOn is host (default), url, name, or id.
+	MatchOn string              `yaml:"match_on"`
+	Mapping StatusMappingConfig `yaml:"mapping"`
+}
+
+type StatusMappingConfig struct {
+	// ItemsPath and ItemsMode select the list of checks, with the same
+	// semantics as the api source's mapping.
+	ItemsPath string `yaml:"items_path"`
+	ItemsMode string `yaml:"items_mode"`
+	// Match is the gjson path to the value compared against services.
+	Match string `yaml:"match"`
+	// Up is the gjson path to the check result.
+	Up string `yaml:"up"`
+	// UpValue, when set, marks a check up when Up equals it as a string.
+	// When empty, Up must be a JSON boolean.
+	UpValue string `yaml:"up_value"`
+}
+
 func Load(path string) (Config, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
@@ -508,6 +568,60 @@ func setDefaults(cfg *Config) {
 		cfg.Debug.Enabled = &on
 	}
 	cfg.Assets.Dir = strings.TrimSpace(cfg.Assets.Dir)
+	for i := range cfg.Status {
+		setStatusDefaults(&cfg.Status[i])
+	}
+}
+
+// setStatusDefaults expands preset types into the generic json form. Only
+// empty fields are filled, so a preset entry can override any part of it.
+func setStatusDefaults(st *StatusConfig) {
+	st.Type = strings.ToLower(strings.TrimSpace(st.Type))
+	if st.Type == "" {
+		st.Type = StatusTypeJSON
+	}
+	st.Name = strings.TrimSpace(st.Name)
+	if st.Name == "" {
+		st.Name = st.Type
+	}
+	if st.Interval == "" {
+		st.Interval = "30s"
+	}
+	st.MatchOn = strings.ToLower(strings.TrimSpace(st.MatchOn))
+	if st.MatchOn == "" {
+		st.MatchOn = StatusMatchHost
+	}
+	base := strings.TrimRight(strings.TrimSpace(st.URL), "/")
+	m := &st.Mapping
+	switch st.Type {
+	case StatusTypePrometheus:
+		if st.Query == "" {
+			st.Query = "probe_success"
+		}
+		if st.MatchLabel == "" {
+			st.MatchLabel = "instance"
+		}
+		if st.Endpoint == "" && base != "" {
+			st.Endpoint = base + "/api/v1/query?query=" + url.QueryEscape(st.Query)
+		}
+		fillEmpty(&m.ItemsPath, "data.result")
+		fillEmpty(&m.Match, "metric."+st.MatchLabel)
+		fillEmpty(&m.Up, "value.1")
+		fillEmpty(&m.UpValue, "1")
+	case StatusTypeGatus:
+		if st.Endpoint == "" && base != "" {
+			st.Endpoint = base + "/api/v1/endpoints/statuses"
+		}
+		// Gatus lists results oldest first; read the newest one.
+		fillEmpty(&m.Match, "results.@reverse.0.hostname")
+		fillEmpty(&m.Up, "results.@reverse.0.success")
+	}
+}
+
+func fillEmpty(field *string, value string) {
+	if *field == "" {
+		*field = value
+	}
 }
 
 // validate runs every defaults-independent semantic check. setDefaults must
@@ -585,6 +699,9 @@ func validate(cfg *Config) error {
 			}
 		}
 	}
+	if err := validateStatus(cfg.Status); err != nil {
+		return err
+	}
 	for _, pattern := range cfg.Services.Filters.ExcludeURLPatterns {
 		pattern = strings.TrimSpace(pattern)
 		if pattern == "" || !strings.ContainsAny(pattern, "*?[") {
@@ -596,6 +713,61 @@ func validate(cfg *Config) error {
 				pattern,
 				err,
 			)
+		}
+	}
+	return nil
+}
+
+func validateStatus(entries []StatusConfig) error {
+	seen := map[string]struct{}{}
+	for i, st := range entries {
+		field := fmt.Sprintf("status[%d]", i)
+		switch st.Type {
+		case StatusTypeJSON:
+			if st.Endpoint == "" {
+				return fmt.Errorf("%s: endpoint is required for type json", field)
+			}
+		case StatusTypePrometheus, StatusTypeGatus:
+			if st.URL == "" && st.Endpoint == "" {
+				return fmt.Errorf("%s: url is required for type %s", field, st.Type)
+			}
+		default:
+			return fmt.Errorf("%s: type must be json, prometheus, or gatus, got %q", field, st.Type)
+		}
+		if _, ok := seen[st.Name]; ok {
+			return fmt.Errorf("%s: duplicate status name %q", field, st.Name)
+		}
+		seen[st.Name] = struct{}{}
+		if u, err := url.Parse(st.Endpoint); err != nil ||
+			(u.Scheme != "http" && u.Scheme != "https") || u.Host == "" {
+			return fmt.Errorf("%s: endpoint must be an http(s) URL", field)
+		}
+		if d, err := time.ParseDuration(st.Interval); err != nil || d <= 0 {
+			return fmt.Errorf(
+				"%s: interval must be a positive duration, got %q",
+				field,
+				st.Interval,
+			)
+		}
+		switch st.MatchOn {
+		case StatusMatchHost, StatusMatchURL, StatusMatchName, StatusMatchID:
+		default:
+			return fmt.Errorf(
+				"%s: match_on must be host, url, name, or id, got %q",
+				field,
+				st.MatchOn,
+			)
+		}
+		switch strings.ToLower(strings.TrimSpace(st.Mapping.ItemsMode)) {
+		case "", "array", "values":
+		default:
+			return fmt.Errorf("%s: mapping.items_mode must be array or values", field)
+		}
+		if strings.TrimSpace(st.Mapping.Match) == "" {
+			return fmt.Errorf("%s: mapping.match is required", field)
+		}
+		if strings.TrimSpace(st.Mapping.Up) == "" {
+			return fmt.Errorf("%s: mapping.up is required", field)
 		}
 	}
 	return nil

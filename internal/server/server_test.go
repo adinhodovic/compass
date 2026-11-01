@@ -25,12 +25,14 @@ func (s staticProvider) DroppedServices() []registry.DroppedService {
 	return nil
 }
 func (s staticProvider) DiscoveryExplanations() []registry.ServiceExplanation { return nil }
+func (s staticProvider) StatusProviders() []registry.StatusProviderStatus     { return nil }
 
 type debugProvider struct {
 	services     []compass.Service
 	statuses     []registry.SourceStatus
 	dropped      []registry.DroppedService
 	explanations []registry.ServiceExplanation
+	providers    []registry.StatusProviderStatus
 }
 
 func (p debugProvider) Services() []compass.Service                { return p.services }
@@ -38,6 +40,8 @@ func (p debugProvider) SourceStatuses() []registry.SourceStatus    { return p.st
 func (p debugProvider) DroppedServices() []registry.DroppedService { return p.dropped }
 
 func (p debugProvider) DiscoveryExplanations() []registry.ServiceExplanation { return p.explanations }
+
+func (p debugProvider) StatusProviders() []registry.StatusProviderStatus { return p.providers }
 
 func TestServerRendersHomeAndDetail(t *testing.T) {
 	provider := staticProvider{{

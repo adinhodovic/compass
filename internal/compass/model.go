@@ -1,5 +1,7 @@
 package compass
 
+import "time"
+
 const (
 	GroupByTags   = "tags"
 	GroupBySource = "source"
@@ -27,6 +29,18 @@ type Service struct {
 	Metadata    map[string]any `json:"metadata"    yaml:"metadata"`
 	Links       []Link         `json:"links"       yaml:"links"`
 	Panels      []Panel        `json:"panels"      yaml:"panels"`
+	// Status is attached by the registry from configured status providers;
+	// sources never set it, and static config cannot.
+	Status *Status `json:"status,omitempty" yaml:"-"`
+}
+
+// Status is a service's up/down state as reported by an external
+// monitoring system (Prometheus, Gatus, ...). Nil means no provider
+// matched the service.
+type Status struct {
+	Up        bool      `json:"up"`
+	Provider  string    `json:"provider"`
+	CheckedAt time.Time `json:"checked_at"`
 }
 
 type Link struct {
@@ -66,6 +80,10 @@ func CloneService(service Service) Service {
 		}
 	}
 	service.Panels = append([]Panel(nil), service.Panels...)
+	if service.Status != nil {
+		status := *service.Status
+		service.Status = &status
+	}
 	if service.Metadata != nil {
 		service.Metadata = cloneMetadata(service.Metadata)
 	}

@@ -47,6 +47,10 @@ services:
   sources:
     - type: static
       ...
+
+status:                      # optional; up/down dots from your monitoring
+  - type: prometheus
+    url: http://prometheus:9090
 ```
 
 Everything that contributes to the rendered service list lives under
@@ -345,6 +349,110 @@ services:
 
 See [Sources](sources.md) for the full per-type catalog and second-class
 recipes.
+
+## Status
+
+`status:` shows an up/down dot on service cards, the detail page, and
+`/debug`, read from monitoring you already run. Compass never probes
+services itself. The dashboard header counts services up and down, and
+the **Status** toggle in the filter bar narrows the grid to either set
+(shareable as `?status=down`). A service with no
+matching check shows no dot and never matches a status filter, so setups
+without monitoring look the same as before.
+
+Every entry is a JSON endpoint mapped with gjson paths, the same way the
+[`api` source](sources.md#api-source) maps discovery. `prometheus` and
+`gatus` are shortcuts that fill in the endpoint and mapping for you:
+
+```yaml
+status:
+  # Blackbox exporter: probe_success{instance="https://grafana.home"}.
+  - type: prometheus
+    url: http://prometheus:9090
+
+  # Gatus: newest result of each endpoint.
+  - type: gatus
+    url: http://gatus:8080
+```
+
+Services are matched by **host** by default. `https://grafana.home`,
+`grafana.home:443`, and `https://grafana.home/login` all match a service
+whose URL is `https://grafana.home/...`. Non-default ports are kept, so
+`http://192.168.1.10:3000` and `http://192.168.1.10:8080` stay separate
+services. When several entries match the
+same service, the first one in `status:` wins. When one entry returns
+several checks for the same key, the service shows down if any of them is
+down.
+
+| Field         | Default | Notes |
+| ------------- | ------- | ----- |
+| `type`        | `json`  | `json`, `prometheus`, or `gatus`. |
+| `name`        | `type`  | Shown in tooltips and `/debug`. Must be unique. |
+| `url`         |         | Base URL for `prometheus` / `gatus`. |
+| `query`       | `probe_success` | `prometheus` only. Any instant query. |
+| `match_label` | `instance` | `prometheus` only. Series label compared against services. |
+| `endpoint`    |         | JSON URL to fetch. Required for `json`; derived from `url` for the shortcuts. |
+| `headers`     | `{}`    | Request headers, e.g. `Authorization: Bearer ${TOKEN}`. |
+| `interval`    | `30s`   | Time between fetches. |
+| `match_on`    | `host`  | `host` (port kept unless 80/443), `url`, `name` (case-insensitive), or `id`. |
+| `mapping.items_path` / `mapping.items_mode` | | Where the list of checks lives. Same semantics as the `api` source. |
+| `mapping.match` | | gjson path to the value compared against services. |
+| `mapping.up`  |         | gjson path to the result. |
+| `mapping.up_value` | | When set, the check is up if `up` equals this string. When empty, `up` must be a JSON boolean. |
+
+Any field a shortcut fills in can be overridden, for example
+`match_on: name` with `mapping.match: name` to match Gatus endpoints by
+name instead of hostname. Gatus reports hostnames without a port, so use
+that override when your services are told apart only by port.
+
+What the shortcuts expand to:
+
+| Type         | Endpoint | `items_path` | `match` | `up` | `up_value` |
+| ------------ | -------- | ------------ | ------- | ---- | ---------- |
+| `prometheus` | `{url}/api/v1/query?query={query}` | `data.result` | `metric.{match_label}` | `value.1` | `"1"` |
+| `gatus`      | `{url}/api/v1/endpoints/statuses` | root array | `results.@reverse.0.hostname` | `results.@reverse.0.success` | (boolean) |
+
+### Recipes
+
+**Prometheus `up`** for scrape targets instead of blackbox probes. Match
+on whatever label holds the service's hostname:
+
+```yaml
+- type: prometheus
+  name: scrape
+  url: http://prometheus:9090
+  query: up{job="node"}
+```
+
+**Uptime Kuma** has no JSON status API, but its `/metrics` endpoint can be
+scraped by Prometheus. `monitor_status` is `1` when up:
+
+```yaml
+- type: prometheus
+  name: uptime-kuma
+  url: http://prometheus:9090
+  query: monitor_status
+  match_label: monitor_url
+```
+
+**Any JSON health endpoint:**
+
+```yaml
+- type: json
+  name: internal-health
+  endpoint: https://health.internal/checks
+  headers:
+    Authorization: Bearer ${HEALTH_TOKEN}
+  mapping:
+    items_path: checks
+    match: url
+    up: state
+    up_value: healthy
+  match_on: url
+```
+
+A provider that fails to fetch keeps its last good result, and the error
+shows on `/debug`.
 
 ## CLI flags and environment
 

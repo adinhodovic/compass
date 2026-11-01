@@ -17,6 +17,7 @@ import (
 	"github.com/adinhodovic/compass/internal/registry"
 	"github.com/adinhodovic/compass/internal/server"
 	"github.com/adinhodovic/compass/internal/source"
+	"github.com/adinhodovic/compass/internal/status"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -123,7 +124,11 @@ func runCompass(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to load catalog: %w", err)
 	}
 
-	reg := registry.NewFromEntries(entries, logger, catalogDB, registryOptionsFromConfig(cfg)...)
+	opts := registryOptionsFromConfig(cfg)
+	for _, st := range cfg.Status {
+		opts = append(opts, registry.WithStatusProviders(status.New(st, httpClient)))
+	}
+	reg := registry.NewFromEntries(entries, logger, catalogDB, opts...)
 	defer func() {
 		if err := reg.Close(); err != nil {
 			logger.Warn("Source close reported errors", "err", err)

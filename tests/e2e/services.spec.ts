@@ -6,7 +6,7 @@ const commandSearch = 'input[placeholder="Search services and pages"]';
 test('dashboard filters update counts and active chips', async ({ page }) => {
   await page.goto('/services');
 
-  await expect(page.getByText('3 services across 2 tags.')).toBeVisible();
+  await expect(page.getByText('3 services across 2 tags')).toBeVisible();
   await page.locator(dashboardSearch).fill('grafana');
 
   await expect(page.getByText('1 of 3 services')).toBeVisible();
@@ -60,4 +60,29 @@ test('source and tag chips apply filters', async ({ page }) => {
   // that source so the visible count is 3 of 3.
   await expect(page.locator('legend').filter({ hasText: 'Sources' }).getByText('1 selected')).toBeVisible();
   await expect(page.getByText('3 of 3 services')).toBeVisible();
+});
+
+test('status summary and filter narrow services by up/down', async ({ page }) => {
+  await page.goto('/services');
+
+  await expect(page.getByText('1 up', { exact: true })).toBeVisible();
+  await expect(page.getByText('1 down', { exact: true })).toBeVisible();
+
+  const down = page.getByRole('button', { name: 'Down', exact: true });
+  await down.click();
+  await expect(down).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.getByText('1 of 3 services')).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Wiki' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Grafana' })).toBeHidden();
+  await expect(page).toHaveURL(/status=down/);
+
+  await page.getByRole('button', { name: 'Up', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Grafana' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Wiki' })).toBeHidden();
+  // Prometheus has no status, so it never matches an up/down filter.
+  await expect(page.getByRole('heading', { name: 'Prometheus' })).toBeHidden();
+
+  await page.getByRole('button', { name: /Clear all/ }).click();
+  await expect(page.getByRole('heading', { name: 'Prometheus' })).toBeVisible();
+  await expect(page).not.toHaveURL(/status=/);
 });

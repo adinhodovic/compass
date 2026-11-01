@@ -408,6 +408,24 @@ services:
         chmod 644 /state/token /state/ca.crt
         exec sleep infinity
 
+  # Exercises status providers: compass reads probe_success from
+  # Prometheus (`type: prometheus`). Host networking so blackbox probes
+  # the same localhost URLs the static services use.
+  prometheus:
+    image: prom/prometheus:v3.15.1
+    restart: unless-stopped
+    network_mode: host
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --web.listen-address=:9090
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+
+  blackbox:
+    image: prom/blackbox-exporter:v0.29.1
+    restart: unless-stopped
+    network_mode: host
+
 volumes:
   headscale-socket:
   headscale-data:

@@ -39,6 +39,7 @@ type Registry struct {
 	logger      *slog.Logger
 	filters     Filters
 	loadTimeout time.Duration
+	statuses    []*statusState
 
 	services     atomic.Pointer[[]compass.Service]
 	dropped      atomic.Pointer[[]DroppedService]
@@ -124,18 +125,23 @@ func (r *Registry) Load(ctx context.Context) ([]compass.Service, error) {
 			errs = append(errs, fmt.Errorf("%s/%s: %w", e.src.Type(), e.src.Name(), err))
 		}
 	}
+	r.refreshStatuses(ctx)
 	return r.Services(), joinSourceErrors("source load", errs)
 }
 
 // Watch starts a background goroutine per source that refreshes on its
-// configured interval. Sources with interval == 0 are skipped. Returns
-// immediately; goroutines exit when ctx is cancelled.
+// configured interval, plus one per status provider. Sources with
+// interval == 0 are skipped. Returns immediately; goroutines exit when ctx
+// is cancelled.
 func (r *Registry) Watch(ctx context.Context) {
 	for _, e := range r.entries {
 		if e.interval <= 0 {
 			continue
 		}
 		go r.watchLoop(ctx, e)
+	}
+	for _, st := range r.statuses {
+		go r.statusWatchLoop(ctx, st)
 	}
 }
 
@@ -194,6 +200,7 @@ func (r *Registry) Refresh(ctx context.Context) error {
 			errs = append(errs, fmt.Errorf("%s/%s: %w", e.src.Type(), e.src.Name(), err))
 		}
 	}
+	r.refreshStatuses(ctx)
 	return joinSourceErrors("refresh", errs)
 }
 
@@ -204,10 +211,13 @@ func joinSourceErrors(prefix string, errs []error) error {
 	return fmt.Errorf("%s: %w", prefix, errors.Join(errs...))
 }
 
-// Services returns the current aggregated snapshot. Safe for concurrent use.
+// Services returns the current aggregated snapshot with status provider
+// results attached. Safe for concurrent use.
 func (r *Registry) Services() []compass.Service {
 	if p := r.services.Load(); p != nil {
-		return compass.CloneServices(*p)
+		services := compass.CloneServices(*p)
+		r.applyStatuses(services)
+		return services
 	}
 	return nil
 }

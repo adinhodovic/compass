@@ -20,6 +20,10 @@ section that explains registry decisions such as URL normalization, generated
 IDs, catalog backfills, and invalid link or panel removal. Dropped services
 show the validation or filter reason that removed them.
 
+When [status providers](configuration.md#status) are configured, a
+**Status providers** card lists each one with its last fetch, the number of
+checks it returned, how many services it matched, and its last error.
+
 The navbar bug icon shows a small red dot whenever any source's last
 load reported an error, so you don't have to keep `/debug` open to know
 something is unhealthy.
@@ -48,11 +52,19 @@ auth mode.
       "url": "https://grafana.example.com",
       "source": "manual",
       "source_type": "static",
-      "tags": ["monitoring"]
+      "tags": ["monitoring"],
+      "status": {
+        "up": true,
+        "provider": "prometheus",
+        "checked_at": "2026-11-01T12:00:00Z"
+      }
     }
   ]
 }
 ```
+
+`status` is present only when a [status provider](configuration.md#status)
+matched the service.
 
 The endpoint uses normal Compass authentication and source access rules. It
 returns only services visible to the current caller, and it does not expose
@@ -73,6 +85,10 @@ scrapers don't need credentials.
 | `compass_source_refresh_duration_seconds`        | histogram | `source`                              |
 | `compass_source_services`                        | gauge     | `source`                              |
 | `compass_source_last_success_timestamp_seconds`  | gauge     | `source`                              |
+| `compass_status_refresh_total`                   | counter   | `provider`, `outcome` (success\|error) |
+| `compass_status_refresh_duration_seconds`        | histogram | `provider`                            |
+| `compass_status_checks`                          | gauge     | `provider`                            |
+| `compass_status_last_success_timestamp_seconds`  | gauge     | `provider`                            |
 
 The `source` label uses Compass's canonical `<type>/<name>` source identity,
 for example `kubernetes/cluster`.
