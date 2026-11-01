@@ -47,6 +47,7 @@ source something real to talk to:
 | `consul` | Two services pre-registered from `consul-services.json`; exercises the `api` source's `items_mode: values`. |
 | `headscale` + `headscale-init` | Self-hosted tailnet. The init sidecar bootstraps a user, two demo nodes, and an API key on first run. |
 | `netbird` + `netbird-init` + `netbird-peer-*` | Self-hosted NetBird combined server. The init sidecar bootstraps an owner, a PAT, and a setup key on first run, and two userspace (netstack) peers join with that setup key. |
+| `prometheus` + `blackbox` | Blackbox probes the static services' URLs; Compass's `type: prometheus` status provider turns `probe_success` into up/down dots. Both use host networking. |
 
 `deploy/dev/compass.yaml` then wires up six sources (static, docker, caddy
 via api, consul via api, headscale, netbird, plus optional kubernetes/tailscale if

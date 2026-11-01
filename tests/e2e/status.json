@@ -1,0 +1,4 @@
+[
+  { "host": "grafana.example.test", "up": true },
+  { "host": "wiki.example.test", "up": false }
+]

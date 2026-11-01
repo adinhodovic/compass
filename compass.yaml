@@ -98,6 +98,23 @@ ui:
 #   - { label: GitHub, url: https://github.com/your-org/your-repo }
 
 # ──────────────────────────────────────────────────────────────────
+# Status — up/down dots read from monitoring you already run.
+# Matched to services by URL, host, or name; unmatched services show no dot.
+# ──────────────────────────────────────────────────────────────────
+
+# status:
+#   - type: prometheus                  # blackbox: probe_success{instance=...}
+#     url: http://prometheus:9090
+#     # query: probe_success            # default
+#   - type: gatus
+#     url: http://gatus:8080
+#   - type: json                        # any JSON endpoint
+#     url: https://health.internal/api/checks
+#     items: checks                     # where the checks are
+#     service: url                      # which service each check is about
+#     up: state                         # "up", "ok", "healthy", true, 1 = up
+
+# ──────────────────────────────────────────────────────────────────
 # Discovery sources + post-aggregation filters.
 # ──────────────────────────────────────────────────────────────────
 

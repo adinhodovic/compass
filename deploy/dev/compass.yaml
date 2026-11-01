@@ -38,6 +38,12 @@ pages:
 home:
   page: home
 
+# Exercises status providers against the dev Prometheus + blackbox.
+status:
+  - type: prometheus
+    url: http://localhost:9090
+    interval: 15s
+
 services:
   sources:
     # Demonstrates the full Service shape, including catalog-backfilled

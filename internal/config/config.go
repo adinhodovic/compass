@@ -4,11 +4,13 @@ import (
 	"bytes"
 	"fmt"
 	"net"
+	"net/url"
 	"os"
 	pathpkg "path"
 	"path/filepath"
 	"regexp"
 	"strings"
+	"time"
 
 	"github.com/adinhodovic/compass/internal/compass"
 	"go.yaml.in/yaml/v3"
@@ -27,6 +29,7 @@ type Config struct {
 	HeaderLinks  []LinkConfig       `yaml:"header_links"`
 	FooterLinks  []LinkConfig       `yaml:"footer_links"`
 	Services     ServicesConfig     `yaml:"services"`
+	Status       []StatusConfig     `yaml:"status"`
 }
 
 // DebugConfig toggles operator-only routes. Default-on so existing
@@ -439,6 +442,43 @@ type MappingConfig struct {
 	Fields    map[string]string `yaml:"fields"`
 }
 
+// Status provider types. "json" is the generic provider every entry runs
+// as; the others are presets that setDefaults expands into json form.
+const (
+	StatusTypeJSON       = "json"
+	StatusTypePrometheus = "prometheus"
+	StatusTypeGatus      = "gatus"
+)
+
+// StatusConfig is one entry under `status:`. Every entry fetches a JSON
+// endpoint and reads each check's service and up value with gjson paths;
+// the prometheus and gatus types fill in the endpoint and paths, and any
+// path set explicitly wins.
+type StatusConfig struct {
+	Type string `yaml:"type"`
+	Name string `yaml:"name"`
+	// URL is the Prometheus or Gatus root for presets, or the JSON
+	// endpoint itself for type json.
+	URL string `yaml:"url"`
+	// Query is the PromQL instant query for type prometheus. Defaults to
+	// probe_success (blackbox exporter).
+	Query   string            `yaml:"query"`
+	Headers map[string]string `yaml:"headers"`
+	// Interval between fetches. Defaults to 30s.
+	Interval string `yaml:"interval"`
+	// Items is the gjson path to the array of checks; empty means the
+	// response root.
+	Items string `yaml:"items"`
+	// Service is the gjson path, within a check, to the URL, host, or name
+	// of the service it is about.
+	Service string `yaml:"service"`
+	// Up is the gjson path, within a check, to its result.
+	Up string `yaml:"up"`
+	// Endpoint is the URL actually fetched, derived from URL by
+	// setDefaults. Not configurable.
+	Endpoint string `yaml:"-"`
+}
+
 func Load(path string) (Config, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
@@ -508,6 +548,48 @@ func setDefaults(cfg *Config) {
 		cfg.Debug.Enabled = &on
 	}
 	cfg.Assets.Dir = strings.TrimSpace(cfg.Assets.Dir)
+	for i := range cfg.Status {
+		setStatusDefaults(&cfg.Status[i])
+	}
+}
+
+// setStatusDefaults expands preset types into the generic json form. Only
+// empty fields are filled, so a preset entry can override any path.
+func setStatusDefaults(st *StatusConfig) {
+	st.Type = strings.ToLower(strings.TrimSpace(st.Type))
+	if st.Type == "" {
+		st.Type = StatusTypeJSON
+	}
+	st.Name = strings.TrimSpace(st.Name)
+	if st.Name == "" {
+		st.Name = st.Type
+	}
+	if st.Interval == "" {
+		st.Interval = "30s"
+	}
+	st.URL = strings.TrimSpace(st.URL)
+	base := strings.TrimRight(st.URL, "/")
+	switch st.Type {
+	case StatusTypePrometheus:
+		fillEmpty(&st.Query, "probe_success")
+		st.Endpoint = base + "/api/v1/query?query=" + url.QueryEscape(st.Query)
+		fillEmpty(&st.Items, "data.result")
+		fillEmpty(&st.Service, "metric.instance")
+		fillEmpty(&st.Up, "value.1")
+	case StatusTypeGatus:
+		st.Endpoint = base + "/api/v1/endpoints/statuses"
+		// Gatus lists results oldest first; read the newest one.
+		fillEmpty(&st.Service, "results.@reverse.0.hostname")
+		fillEmpty(&st.Up, "results.@reverse.0.success")
+	default:
+		st.Endpoint = st.URL
+	}
+}
+
+func fillEmpty(field *string, value string) {
+	if *field == "" {
+		*field = value
+	}
 }
 
 // validate runs every defaults-independent semantic check. setDefaults must
@@ -585,6 +667,9 @@ func validate(cfg *Config) error {
 			}
 		}
 	}
+	if err := validateStatus(cfg.Status); err != nil {
+		return err
+	}
 	for _, pattern := range cfg.Services.Filters.ExcludeURLPatterns {
 		pattern = strings.TrimSpace(pattern)
 		if pattern == "" || !strings.ContainsAny(pattern, "*?[") {
@@ -596,6 +681,40 @@ func validate(cfg *Config) error {
 				pattern,
 				err,
 			)
+		}
+	}
+	return nil
+}
+
+func validateStatus(entries []StatusConfig) error {
+	seen := map[string]struct{}{}
+	for i, st := range entries {
+		field := fmt.Sprintf("status[%d]", i)
+		switch st.Type {
+		case StatusTypeJSON, StatusTypePrometheus, StatusTypeGatus:
+		default:
+			return fmt.Errorf("%s: type must be json, prometheus, or gatus, got %q", field, st.Type)
+		}
+		if _, ok := seen[st.Name]; ok {
+			return fmt.Errorf("%s: duplicate status name %q", field, st.Name)
+		}
+		seen[st.Name] = struct{}{}
+		if u, err := url.Parse(st.URL); err != nil ||
+			(u.Scheme != "http" && u.Scheme != "https") || u.Host == "" {
+			return fmt.Errorf("%s: url must be an http(s) URL", field)
+		}
+		if d, err := time.ParseDuration(st.Interval); err != nil || d <= 0 {
+			return fmt.Errorf(
+				"%s: interval must be a positive duration, got %q",
+				field,
+				st.Interval,
+			)
+		}
+		if strings.TrimSpace(st.Service) == "" {
+			return fmt.Errorf("%s: service is required for type json", field)
+		}
+		if strings.TrimSpace(st.Up) == "" {
+			return fmt.Errorf("%s: up is required for type json", field)
 		}
 	}
 	return nil

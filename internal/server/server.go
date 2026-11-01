@@ -37,6 +37,7 @@ type ServiceProvider interface {
 	SourceStatuses() []registry.SourceStatus
 	DroppedServices() []registry.DroppedService
 	DiscoveryExplanations() []registry.ServiceExplanation
+	StatusProviders() []registry.StatusProviderStatus
 }
 
 type Server struct {
@@ -111,6 +112,10 @@ type homeData struct {
 	GroupBy    string
 	GroupNames []string
 	Groups     map[string][]compass.Service
+	// UpCount and DownCount summarize status provider results in the header;
+	// both zero hides the status summary and filter.
+	UpCount   int
+	DownCount int
 }
 
 type detailData struct {
@@ -132,12 +137,13 @@ type pageData struct {
 
 type debugData struct {
 	Base
-	Statuses      []registry.SourceStatus
-	Groups        map[string][]compass.Service // keyed by source name
-	Explanations  map[string]registry.ServiceExplanation
-	AccessGroups  map[string][]string // keyed by source ID
-	Dropped       []registry.DroppedService
-	DroppedGroups map[string][]registry.DroppedService
+	Statuses        []registry.SourceStatus
+	Groups          map[string][]compass.Service // keyed by source name
+	Explanations    map[string]registry.ServiceExplanation
+	AccessGroups    map[string][]string // keyed by source ID
+	Dropped         []registry.DroppedService
+	DroppedGroups   map[string][]registry.DroppedService
+	StatusProviders []registry.StatusProviderStatus
 }
 
 type servicesAPIResponse struct {
@@ -341,6 +347,15 @@ func (s Server) renderServices(w http.ResponseWriter, r *http.Request) {
 		Groups:     groups,
 		GroupNames: registry.GroupNames(groups),
 	}
+	for _, service := range base.Services {
+		switch {
+		case service.Status == nil:
+		case service.Status.Up:
+			data.UpCount++
+		default:
+			data.DownCount++
+		}
+	}
 	s.render(w, "home", data)
 }
 
@@ -528,13 +543,14 @@ func (s Server) debug(w http.ResponseWriter, r *http.Request) {
 	statuses := s.provider.SourceStatuses()
 	base.HasSourceErrors = sourceStatusesHaveErrors(statuses)
 	s.render(w, "debug", debugData{
-		Base:          base,
-		Statuses:      statuses,
-		Groups:        registry.Group(base.Services, compass.GroupBySource),
-		Explanations:  explanationMap(explanations),
-		AccessGroups:  s.sourceAccess,
-		Dropped:       dropped,
-		DroppedGroups: groupDroppedServices(dropped),
+		Base:            base,
+		Statuses:        statuses,
+		Groups:          registry.Group(base.Services, compass.GroupBySource),
+		Explanations:    explanationMap(explanations),
+		AccessGroups:    s.sourceAccess,
+		Dropped:         dropped,
+		DroppedGroups:   groupDroppedServices(dropped),
+		StatusProviders: s.provider.StatusProviders(),
 	})
 }
 

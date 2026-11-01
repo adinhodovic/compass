@@ -1,0 +1,26 @@
+# Dev Prometheus for compass's status providers. Blackbox probes the
+# static services' URLs, so `type: prometheus` with the default
+# probe_success query matches them by host:port.
+global:
+  scrape_interval: 15s
+
+scrape_configs:
+  - job_name: blackbox
+    metrics_path: /probe
+    params:
+      module: [http_2xx]
+    static_configs:
+      - targets:
+          - http://localhost:3000       # Grafana
+          - http://localhost:8081       # Internal Wiki (Caddy)
+          - http://localhost:8082/admin # Pi-hole (Traefik, 404: down)
+          - http://localhost:8083       # Duplicate Demo (Traefik dashboard)
+          - http://localhost:8084       # Duplicate Demo (http-echo)
+          - http://localhost:8085       # Admin Console (Headscale API root)
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: localhost:9115

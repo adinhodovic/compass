@@ -56,6 +56,8 @@ type serviceJSON struct {
 	Description string   `json:"description"`
 	IconURL     string   `json:"iconURL,omitempty"`
 	IconText    string   `json:"iconText,omitempty"`
+	// Status is "up", "down", or empty when no status provider matched.
+	Status string `json:"status,omitempty"`
 }
 
 // commandIndex builds the JSON payload that powers the global command palette.
@@ -251,6 +253,12 @@ func servicesJSON(services []compass.Service) template.JS {
 			PrimaryTag:  service.PrimaryTag,
 			Tags:        service.Tags,
 			Description: service.Description,
+		}
+		if service.Status != nil {
+			entry.Status = "down"
+			if service.Status.Up {
+				entry.Status = "up"
+			}
 		}
 		if resolved.Kind == "image" {
 			entry.IconURL = resolved.URL

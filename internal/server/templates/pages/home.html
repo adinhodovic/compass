@@ -7,9 +7,14 @@
     <p class="text-sm text-base-content/70 mt-1 max-w-3xl">{{.Organization.Description}}</p>
     {{end}}
     {{$groupNoun := .GroupBy}}{{if eq $groupNoun "tags"}}{{$groupNoun = "tag"}}{{end}}
-    <p class="text-xs text-base-content/60 mt-2">
-      {{len .Services}} service{{if ne (len .Services) 1}}s{{end}} across {{len .GroupNames}} {{$groupNoun}}{{if ne (len .GroupNames) 1}}s{{end}}.
-    </p>
+    <div class="mt-3 inline-flex max-w-full flex-wrap items-center gap-2 rounded-box border border-base-300 bg-base-100 px-3 py-1.5 text-xs text-base-content/70 shadow-sm">
+      <p>{{len .Services}} service{{if ne (len .Services) 1}}s{{end}} across {{len .GroupNames}} {{$groupNoun}}{{if ne (len .GroupNames) 1}}s{{end}}</p>
+      {{if or .UpCount .DownCount}}
+      <span class="h-4 w-px bg-base-300" aria-hidden="true"></span>
+      <span class="inline-flex items-center gap-1.5"><span class="status size-2 status-success" aria-hidden="true"></span>{{.UpCount}} up</span>
+      <span class="inline-flex items-center gap-1.5{{if .DownCount}} font-medium text-error{{end}}"><span class="status size-2 status-error" aria-hidden="true"></span>{{.DownCount}} down</span>
+      {{end}}
+    </div>
   </section>
 
   <section class="card bg-base-100 shadow-sm border border-base-300">
@@ -26,6 +31,7 @@
           <template x-for="service in favoriteServices().slice(0, 6)" :key="service.id">
             <span class="group flex max-w-full items-center gap-1 rounded-lg bg-base-200 px-2 py-1.5 text-sm transition-colors hover:bg-base-300">
               <a class="flex min-w-0 items-center gap-2" :href="service.url" target="_blank" rel="noopener" x-on:click="trackRecent(service.id)">
+                <span class="status shrink-0" x-show="service.status" x-bind:class="service.status === 'up' ? 'status-success' : 'status-error'" role="img" x-bind:aria-label="service.status === 'up' ? 'Up' : 'Down'"></span>
                 <template x-if="service.iconURL">
                   <span class="avatar"><span class="w-5 rounded"><img :src="service.iconURL" :alt="service.name + ' logo'" class="object-contain" loading="lazy"></span></span>
                 </template>
@@ -60,6 +66,7 @@
           <template x-for="service in recentServices().slice(0, 6)" :key="service.id">
             <a class="flex max-w-full items-center gap-2 rounded-lg px-2 py-1.5 text-sm text-base-content/80 transition-colors hover:bg-base-200"
                :href="service.url" target="_blank" rel="noopener" x-on:click="trackRecent(service.id)">
+              <span class="status shrink-0" x-show="service.status" x-bind:class="service.status === 'up' ? 'status-success' : 'status-error'" role="img" x-bind:aria-label="service.status === 'up' ? 'Up' : 'Down'"></span>
               <template x-if="service.iconURL">
                 <span class="avatar"><span class="w-5 rounded"><img :src="service.iconURL" :alt="service.name + ' logo'" class="object-contain" loading="lazy"></span></span>
               </template>
@@ -85,12 +92,12 @@
         <div>
           <h2 class="card-title">Filters</h2>
           <p class="text-xs text-base-content/60">
-            <span x-show="q || tags.length || sources.length" x-text="visibleCount() + ' of '"></span>{{len .Services}} service{{if ne (len .Services) 1}}s{{end}}
+            <span x-show="hasFilters()" x-text="visibleCount() + ' of '"></span>{{len .Services}} service{{if ne (len .Services) 1}}s{{end}}
           </p>
         </div>
         <div class="flex shrink-0 items-center gap-1">
           <button class="btn btn-ghost btn-sm" type="button" x-on:click="copy(window.location.href)" aria-label="Copy dashboard view link">{{icon "lucide:link"}}<span class="hidden sm:inline">Share view</span></button>
-          <button class="btn btn-ghost btn-sm" type="button" x-on:click="resetFilters()" x-show="q || tags.length || sources.length">{{icon "lucide:x"}}Clear all</button>
+          <button class="btn btn-ghost btn-sm" type="button" x-on:click="resetFilters()" x-show="hasFilters()">{{icon "lucide:x"}}Clear all</button>
         </div>
       </div>
       <label class="input w-full mt-4" for="service-search">
@@ -209,6 +216,16 @@
             <button type="button" class="btn btn-sm join-item {{if eq .GroupBy "tags"}}btn-primary{{end}}" aria-pressed="{{if eq .GroupBy "tags"}}true{{else}}false{{end}}" x-on:click="setGroupBy('tags')">{{icon "lucide:tag"}}Tag</button>
           </div>
         </div>
+        {{if or .UpCount .DownCount}}
+        <div class="grid gap-1 sm:flex sm:items-center sm:gap-2">
+          <span class="text-xs text-base-content/60">Status</span>
+          <div class="join w-full sm:w-auto">
+            <button type="button" class="btn btn-sm join-item" x-bind:class="statusFilter === '' ? 'btn-primary' : ''" x-bind:aria-pressed="statusFilter === ''" x-on:click="statusFilter = ''">All</button>
+            <button type="button" class="btn btn-sm join-item" x-bind:class="statusFilter === 'up' ? 'btn-primary' : ''" x-bind:aria-pressed="statusFilter === 'up'" x-on:click="statusFilter = 'up'"><span class="status status-success" aria-hidden="true"></span>Up</button>
+            <button type="button" class="btn btn-sm join-item" x-bind:class="statusFilter === 'down' ? 'btn-primary' : ''" x-bind:aria-pressed="statusFilter === 'down'" x-on:click="statusFilter = 'down'"><span class="status status-error" aria-hidden="true"></span>Down</button>
+          </div>
+        </div>
+        {{end}}
         <div class="flex items-center justify-between gap-2 sm:ml-auto sm:justify-start">
           <span class="text-xs text-base-content/60">Sort by</span>
           <div class="dropdown dropdown-end" x-bind:class="sortPickerOpen ? 'dropdown-open' : 'dropdown-close'" x-on:click.outside="sortPickerOpen = false">
@@ -261,14 +278,19 @@
             </div>
             {{end}}
             <div class="min-w-0 flex-1">
-              <h3 class="card-title truncate">{{.Name}}</h3>
+              <div class="flex min-w-0 items-center gap-2">
+                {{template "status-dot" .Status}}
+                <h3 class="card-title truncate">{{.Name}}</h3>
+              </div>
               <button class="badge badge-outline badge-sm mt-1 cursor-pointer transition-colors hover:badge-ghost focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary" type="button" data-source="{{.SourceID}}" x-on:click="selectSource($el.dataset.source)" aria-label="Filter by source {{sourceLabel .SourceType .Source}}">{{sourceLabel .SourceType .Source}}</button>
             </div>
-            <div class="tooltip" data-service-id="{{.ID}}" x-bind:data-tip="isFavorite($el.dataset.serviceId) ? 'Unpin' : 'Pin'">
-              <button class="btn btn-ghost btn-sm btn-square" type="button" data-service-id="{{.ID}}" data-service-name="{{.Name}}" x-on:click="toggleFavorite($el.dataset.serviceId)" x-bind:class="isFavorite($el.dataset.serviceId) ? 'text-warning' : 'text-base-content/40'" x-bind:aria-label="(isFavorite($el.dataset.serviceId) ? 'Unpin ' : 'Pin ') + $el.dataset.serviceName">
-                <span data-service-id="{{.ID}}" x-show="isFavorite($el.dataset.serviceId)">{{icon "solar:star-bold"}}</span>
-                <span data-service-id="{{.ID}}" x-show="!isFavorite($el.dataset.serviceId)">{{icon "lucide:star"}}</span>
-              </button>
+            <div class="flex shrink-0 items-center">
+              <div class="tooltip" data-service-id="{{.ID}}" x-bind:data-tip="isFavorite($el.dataset.serviceId) ? 'Unpin' : 'Pin'">
+                <button class="btn btn-ghost btn-sm btn-square" type="button" data-service-id="{{.ID}}" data-service-name="{{.Name}}" x-on:click="toggleFavorite($el.dataset.serviceId)" x-bind:class="isFavorite($el.dataset.serviceId) ? 'text-warning' : 'text-base-content/40'" x-bind:aria-label="(isFavorite($el.dataset.serviceId) ? 'Unpin ' : 'Pin ') + $el.dataset.serviceName">
+                  <span data-service-id="{{.ID}}" x-show="isFavorite($el.dataset.serviceId)">{{icon "solar:star-bold"}}</span>
+                  <span data-service-id="{{.ID}}" x-show="!isFavorite($el.dataset.serviceId)">{{icon "lucide:star"}}</span>
+                </button>
+              </div>
             </div>
           </div>
           {{if .Description}}<p class="line-clamp-3 text-base-content/80">{{.Description}}</p>{{else}}<p class="text-sm italic text-base-content/50">No description provided.</p>{{end}}
@@ -309,7 +331,7 @@
     {{icon "lucide:search-x"}}
     <div>
       <p class="font-bold">No matching services</p>
-      <div class="text-sm">Try clearing a search term, tag, or source filter.</div>
+      <div class="text-sm">Try clearing a search term, tag, source, or status filter.</div>
     </div>
   </div>
 

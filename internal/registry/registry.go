@@ -39,6 +39,7 @@ type Registry struct {
 	logger      *slog.Logger
 	filters     Filters
 	loadTimeout time.Duration
+	statuses    []*statusState
 
 	services     atomic.Pointer[[]compass.Service]
 	dropped      atomic.Pointer[[]DroppedService]
@@ -124,18 +125,23 @@ func (r *Registry) Load(ctx context.Context) ([]compass.Service, error) {
 			errs = append(errs, fmt.Errorf("%s/%s: %w", e.src.Type(), e.src.Name(), err))
 		}
 	}
+	r.refreshStatuses(ctx)
 	return r.Services(), joinSourceErrors("source load", errs)
 }
 
 // Watch starts a background goroutine per source that refreshes on its
-// configured interval. Sources with interval == 0 are skipped. Returns
-// immediately; goroutines exit when ctx is cancelled.
+// configured interval, plus one per status provider. Sources with
+// interval == 0 are skipped. Returns immediately; goroutines exit when ctx
+// is cancelled.
 func (r *Registry) Watch(ctx context.Context) {
 	for _, e := range r.entries {
 		if e.interval <= 0 {
 			continue
 		}
 		go r.watchLoop(ctx, e)
+	}
+	for _, st := range r.statuses {
+		go r.statusWatchLoop(ctx, st)
 	}
 }
 
@@ -194,6 +200,7 @@ func (r *Registry) Refresh(ctx context.Context) error {
 			errs = append(errs, fmt.Errorf("%s/%s: %w", e.src.Type(), e.src.Name(), err))
 		}
 	}
+	r.refreshStatuses(ctx)
 	return joinSourceErrors("refresh", errs)
 }
 
@@ -204,10 +211,13 @@ func joinSourceErrors(prefix string, errs []error) error {
 	return fmt.Errorf("%s: %w", prefix, errors.Join(errs...))
 }
 
-// Services returns the current aggregated snapshot. Safe for concurrent use.
+// Services returns the current aggregated snapshot with status provider
+// results attached. Safe for concurrent use.
 func (r *Registry) Services() []compass.Service {
 	if p := r.services.Load(); p != nil {
-		return compass.CloneServices(*p)
+		services := compass.CloneServices(*p)
+		r.applyStatuses(services)
+		return services
 	}
 	return nil
 }
@@ -392,7 +402,9 @@ func (r *Registry) DroppedServices() []DroppedService {
 // Safe for concurrent use.
 func (r *Registry) DiscoveryExplanations() []ServiceExplanation {
 	if p := r.explanations.Load(); p != nil {
-		return cloneExplanations(*p)
+		explanations := cloneExplanations(*p)
+		r.explainStatuses(explanations)
+		return explanations
 	}
 	return nil
 }
@@ -687,14 +699,20 @@ func (r *Registry) normalizeWithExplanation(
 	explanation := ServiceExplanation{
 		Source:     service.Source,
 		SourceType: service.SourceType,
-		Steps:      []string{"Accepted and published"},
+		Steps:      []string{"Published to the dashboard"},
 	}
 	if strings.TrimSpace(originalURL) != service.URL {
-		explanation.Steps = append(explanation.Steps, "URL normalized")
+		explanation.Steps = append(
+			explanation.Steps,
+			fmt.Sprintf("URL rewritten from %q", strings.TrimSpace(originalURL)),
+		)
 	}
 	if service.ID == "" {
 		service.ID = slug.Make(service.SourceType + "-" + service.Source + "-" + service.Name)
-		explanation.Steps = append(explanation.Steps, "ID generated from source and name")
+		explanation.Steps = append(
+			explanation.Steps,
+			"No ID set, generated one from source and name",
+		)
 	}
 	drop.ID = service.ID
 	explanation.ID = service.ID
@@ -729,7 +747,7 @@ func (r *Registry) normalizeWithExplanation(
 			if len(catalogFields) > 0 {
 				explanation.Steps = append(
 					explanation.Steps,
-					"Catalog filled "+strings.Join(catalogFields, ", "),
+					"Filled "+strings.Join(catalogFields, ", ")+" from the catalog",
 				)
 			}
 		}
@@ -740,14 +758,14 @@ func (r *Registry) normalizeWithExplanation(
 		service.PrimaryTag = service.Tags[0]
 	}
 	if !slices.Equal(originalTags, service.Tags) {
-		explanation.Steps = append(explanation.Steps, "Tags normalized")
+		explanation.Steps = append(explanation.Steps, "Moved the primary tag to the front")
 	}
 	originalLinks := len(service.Links)
 	service.Links = validLinks(service.Links)
 	if len(service.Links) != originalLinks {
 		explanation.Steps = append(
 			explanation.Steps,
-			fmt.Sprintf("Removed %d invalid link(s)", originalLinks-len(service.Links)),
+			droppedStep(originalLinks-len(service.Links), "link"),
 		)
 	}
 	originalPanels := len(service.Panels)
@@ -755,10 +773,18 @@ func (r *Registry) normalizeWithExplanation(
 	if len(service.Panels) != originalPanels {
 		explanation.Steps = append(
 			explanation.Steps,
-			fmt.Sprintf("Removed %d invalid panel(s)", originalPanels-len(service.Panels)),
+			droppedStep(originalPanels-len(service.Panels), "panel"),
 		)
 	}
 	return service, DroppedService{}, explanation, true
+}
+
+// droppedStep words a link or panel removal for /debug explanations.
+func droppedStep(n int, noun string) string {
+	if n != 1 {
+		noun += "s"
+	}
+	return fmt.Sprintf("Dropped %d %s with an invalid URL", n, noun)
 }
 
 func validLinks(links []compass.Link) []compass.Link {

@@ -6,6 +6,15 @@ organization:
 ui:
   default_group_by: tags
 
+# Grafana up, Wiki down, Prometheus unmatched (no status).
+status:
+  - type: json
+    name: e2e
+    url: http://127.0.0.1:18081/
+    interval: 1s
+    service: host
+    up: up
+
 services:
   sources:
     - type: static

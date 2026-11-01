@@ -89,8 +89,7 @@ func (a Source) Load(ctx context.Context) ([]compass.Service, error) {
 		)
 	}
 
-	root := gjsonRoot(payload, a.mapping.ItemsPath)
-	itemsValue, err := itemsFromRoot(root, a.mapping.ItemsMode, a.mapping.ItemsPath)
+	itemsValue, err := meta.JSONItems(payload, a.mapping.ItemsPath, a.mapping.ItemsMode)
 	if err != nil {
 		return nil, fmt.Errorf("source %s: map response: %w", a.name, err)
 	}
@@ -117,42 +116,12 @@ func (a Source) Load(ctx context.Context) ([]compass.Service, error) {
 	return services, nil
 }
 
-// itemsFromRoot turns the resolved root (after items_path lookup) into a
-// flat []gjson.Result according to items_mode.
-//
-//   - "" or "array": root must already be an array.
-//   - "values": root must be an object; object values become items.
-func itemsFromRoot(root gjson.Result, mode, path string) ([]gjson.Result, error) {
-	switch strings.ToLower(strings.TrimSpace(mode)) {
-	case "", "array":
-		if !root.IsArray() {
-			return nil, fmt.Errorf("items_path %q did not resolve to an array", path)
-		}
-		return root.Array(), nil
-	case "values":
-		if !root.IsObject() {
-			return nil, fmt.Errorf(
-				"items_path %q did not resolve to a map (items_mode=values)",
-				path,
-			)
-		}
-		obj := root.Map()
-		items := make([]gjson.Result, 0, len(obj))
-		for _, value := range obj {
-			items = append(items, value)
-		}
-		return items, nil
-	default:
-		return nil, fmt.Errorf("unsupported items_mode %q", mode)
-	}
-}
-
 func stringFromPath(item gjson.Result, path string) string {
 	path = strings.TrimSpace(path)
 	if path == "" {
 		return ""
 	}
-	value := item.Get(gjsonPath(path))
+	value := item.Get(meta.JSONPath(path))
 	if !value.Exists() {
 		return ""
 	}
@@ -167,7 +136,7 @@ func stringSliceFromPath(item gjson.Result, path string) []string {
 	if path == "" {
 		return nil
 	}
-	value := item.Get(gjsonPath(path))
+	value := item.Get(meta.JSONPath(path))
 	if !value.Exists() {
 		return nil
 	}
@@ -185,21 +154,4 @@ func stringSliceFromPath(item gjson.Result, path string) []string {
 		return nil
 	}
 	return meta.CommaList(value.String())
-}
-
-func gjsonRoot(payload []byte, path string) gjson.Result {
-	path = gjsonPath(path)
-	if path == "" || path == "$" {
-		return gjson.ParseBytes(payload)
-	}
-	return gjson.GetBytes(payload, path)
-}
-
-func gjsonPath(path string) string {
-	path = strings.TrimSpace(path)
-	path = strings.TrimPrefix(path, "$.")
-	if path == "$" {
-		return ""
-	}
-	return path
 }

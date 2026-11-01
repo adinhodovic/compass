@@ -79,6 +79,49 @@ var (
 		},
 		[]string{"source"},
 	)
+
+	StatusRefreshTotal = promauto.NewCounterVec(
+		prometheus.CounterOpts{
+			Namespace: "compass",
+			Subsystem: "status",
+			Name:      "refresh_total",
+			Help:      "Status provider fetches, partitioned by provider name and outcome (success|error).",
+		},
+		[]string{"provider", "outcome"},
+	)
+
+	StatusRefreshDuration = promauto.NewHistogramVec(
+		prometheus.HistogramOpts{
+			Namespace: "compass",
+			Subsystem: "status",
+			Name:      "refresh_duration_seconds",
+			Help:      "Status provider fetch latency.",
+			Buckets:   []float64{0.05, 0.1, 0.25, 0.5, 1, 2, 5, 10, 30},
+		},
+		[]string{"provider"},
+	)
+
+	StatusChecks = promauto.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Namespace: "compass",
+			Subsystem: "status",
+			Name:      "checks",
+			Help:      "Number of checks returned by each status provider on its most recent successful fetch.",
+		},
+		[]string{"provider"},
+	)
+
+	// StatusLastSuccessTimestamp mirrors SourceLastSuccessTimestamp for
+	// status providers, so stale status dots can be alerted on the same way.
+	StatusLastSuccessTimestamp = promauto.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Namespace: "compass",
+			Subsystem: "status",
+			Name:      "last_success_timestamp_seconds",
+			Help:      "Unix timestamp (seconds) of the last successful fetch per status provider.",
+		},
+		[]string{"provider"},
+	)
 )
 
 // Handler is the HTTP handler that exposes the Prometheus metrics.
@@ -101,6 +144,21 @@ func ObserveSourceRefresh(source string, count int, dur time.Duration, err error
 	if err == nil {
 		SourceServices.WithLabelValues(source).Set(float64(count))
 		SourceLastSuccessTimestamp.WithLabelValues(source).SetToCurrentTime()
+	}
+}
+
+// ObserveStatusRefresh records one status provider fetch, with the same
+// success/error semantics as ObserveSourceRefresh.
+func ObserveStatusRefresh(provider string, count int, dur time.Duration, err error) {
+	outcome := "success"
+	if err != nil {
+		outcome = "error"
+	}
+	StatusRefreshTotal.WithLabelValues(provider, outcome).Inc()
+	StatusRefreshDuration.WithLabelValues(provider).Observe(dur.Seconds())
+	if err == nil {
+		StatusChecks.WithLabelValues(provider).Set(float64(count))
+		StatusLastSuccessTimestamp.WithLabelValues(provider).SetToCurrentTime()
 	}
 }
 

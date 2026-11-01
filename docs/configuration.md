@@ -47,6 +47,10 @@ services:
   sources:
     - type: static
       ...
+
+status:                      # optional; up/down dots from your monitoring
+  - type: prometheus
+    url: http://prometheus:9090
 ```
 
 Everything that contributes to the rendered service list lives under
@@ -345,6 +349,63 @@ services:
 
 See [Sources](sources.md) for the full per-type catalog and second-class
 recipes.
+
+## Status
+
+`status:` reads up/down checks from monitoring you already run and shows
+them as a dot on each service, a summary in the dashboard header, and a
+**Status** filter (`?status=down`). Compass never probes services itself;
+services without a matching check show no dot.
+
+```yaml
+status:
+  # Blackbox exporter: probe_success{instance="https://grafana.home"}.
+  - type: prometheus
+    url: http://prometheus:9090
+
+  # Gatus: the newest result of each endpoint.
+  - type: gatus
+    url: http://gatus:8080
+
+  # Uptime Kuma, scraped by Prometheus.
+  - type: prometheus
+    name: uptime-kuma
+    url: http://prometheus:9090
+    query: monitor_status
+    service: metric.monitor_url
+
+  # Any JSON endpoint.
+  - type: json
+    url: https://health.internal/api/checks
+    headers:
+      Authorization: Bearer ${HEALTH_TOKEN}
+    items: checks
+    service: url
+    up: state
+```
+
+| Field      | Notes |
+| ---------- | ----- |
+| `type`     | `prometheus`, `gatus`, or `json` (default). |
+| `url`      | Required. The Prometheus or Gatus server, or the JSON endpoint. |
+| `name`     | Shown in tooltips and `/debug`. Defaults to `type`; must be unique. |
+| `interval` | Time between fetches. Default `30s`. |
+| `headers`  | Request headers. |
+| `query`    | `prometheus` only. Instant query; default `probe_success`. |
+| `items`    | gjson path to the array of checks. Empty means the response root. |
+| `service`  | gjson path, within a check, to the service's URL, host, or name. |
+| `up`       | gjson path, within a check, to its result. `true`, a non-zero number, or `up`/`ok`/`healthy`/`true`/`1` is up; anything else is down. |
+
+`prometheus` and `gatus` set `items`, `service`, and `up` for you; set any
+of them to override, e.g. `service: name` to match Gatus endpoints by name.
+
+**Matching.** A check's service value is compared by its shape: a URL with
+a path against the service URL, a URL or host against the service host
+(ports other than 80/443 kept), and a plain word against the service name,
+ignoring case. The first matching entry in `status:` wins, and a service
+with several checks shows down if any is down. `/debug` shows what each
+service matched, and keeps a provider's last good result when a fetch
+fails.
 
 ## CLI flags and environment
 

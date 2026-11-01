@@ -25,12 +25,14 @@ func (s staticProvider) DroppedServices() []registry.DroppedService {
 	return nil
 }
 func (s staticProvider) DiscoveryExplanations() []registry.ServiceExplanation { return nil }
+func (s staticProvider) StatusProviders() []registry.StatusProviderStatus     { return nil }
 
 type debugProvider struct {
 	services     []compass.Service
 	statuses     []registry.SourceStatus
 	dropped      []registry.DroppedService
 	explanations []registry.ServiceExplanation
+	providers    []registry.StatusProviderStatus
 }
 
 func (p debugProvider) Services() []compass.Service                { return p.services }
@@ -38,6 +40,8 @@ func (p debugProvider) SourceStatuses() []registry.SourceStatus    { return p.st
 func (p debugProvider) DroppedServices() []registry.DroppedService { return p.dropped }
 
 func (p debugProvider) DiscoveryExplanations() []registry.ServiceExplanation { return p.explanations }
+
+func (p debugProvider) StatusProviders() []registry.StatusProviderStatus { return p.providers }
 
 func TestServerRendersHomeAndDetail(t *testing.T) {
 	provider := staticProvider{{
@@ -405,10 +409,15 @@ func TestDebugRendersDroppedServices(t *testing.T) {
 			SourceType: compass.SourceTypeStatic,
 		}},
 		statuses: []registry.SourceStatus{{Name: "manual", Type: compass.SourceTypeStatic}},
-		explanations: []registry.ServiceExplanation{{
-			ID:    "grafana",
-			Steps: []string{"Accepted and published", "ID generated from source and name"},
-		}},
+		explanations: []registry.ServiceExplanation{
+			{
+				ID: "grafana",
+				Steps: []string{
+					"Published to the dashboard",
+					"No ID set, generated one from source and name",
+				},
+			},
+		},
 		dropped: []registry.DroppedService{{
 			Name:       "Wildcard",
 			URL:        "https://*.example.com",
@@ -426,7 +435,7 @@ func TestDebugRendersDroppedServices(t *testing.T) {
 		t.Fatalf("expected /debug to render 200, got %d", resp.Code)
 	}
 	body := resp.Body.String()
-	for _, want := range []string{"Dropped", "Wildcard", "wildcard host excluded", "Returned by this source", "Why included", "ID generated from source and name"} {
+	for _, want := range []string{"Dropped", "Wildcard", "wildcard host excluded", "Returned by this source", "Discovery details", "No ID set, generated one from source and name"} {
 		if !strings.Contains(body, want) {
 			t.Fatalf("expected debug page to contain %q, got %q", want, body)
 		}

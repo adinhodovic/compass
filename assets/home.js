@@ -1,4 +1,4 @@
-// compassHome backs the services dashboard at "/" — search, tag/source
+// compassHome backs the services dashboard at "/" — search, tag/source/status
 // filters, favorites/recents, group-by, and pagination. It is the largest
 // Alpine factory by far; keeping it here isolates that complexity from
 // the smaller per-page factories in factories.js.
@@ -7,6 +7,7 @@ import { storageGet, storageSet, safeJSONParse } from './storage.js';
 import { compassFuse } from './command.js';
 
 const COMPASS_SORT_MODES = ['name', 'favorites'];
+const COMPASS_STATUS_FILTERS = ['up', 'down'];
 const COMPASS_TAG_PICKER_LIMIT_DESKTOP = 30;
 const COMPASS_TAG_PICKER_LIMIT_MOBILE = 10;
 const COMPASS_TAG_SEARCH_RESULTS_LIMIT = 15;
@@ -16,6 +17,7 @@ export function compassHome() {
     q: '',
     tags: [],
     sources: [],
+    statusFilter: '',
     tagQuery: '',
     tagPickerOpen: false,
     sourcePickerOpen: false,
@@ -75,6 +77,8 @@ export function compassHome() {
       this.sources = sourceParam
         ? sourceParam.split(',').filter(Boolean)
         : (stored.sources || (stored.source ? [stored.source] : []));
+      const statusParam = url.searchParams.get('status') || stored.status || '';
+      this.statusFilter = COMPASS_STATUS_FILTERS.includes(statusParam) ? statusParam : '';
       this.collapsedGroups = safeJSONParse(storageGet(this.storage.collapsed), {});
       const sortParam = url.searchParams.get('sort');
       this.sortMode = COMPASS_SORT_MODES.includes(sortParam) ? sortParam : 'name';
@@ -82,13 +86,14 @@ export function compassHome() {
       this.$watch('q', () => { this.resetGroupShown(); this.groupsPage = 1; this.persistFilters(); this.syncURL(); });
       this.$watch('tags', () => { this.resetGroupShown(); this.groupsPage = 1; this.persistFilters(); this.syncURL(); });
       this.$watch('sources', () => { this.resetGroupShown(); this.groupsPage = 1; this.persistFilters(); this.syncURL(); });
+      this.$watch('statusFilter', () => { this.resetGroupShown(); this.groupsPage = 1; this.persistFilters(); this.syncURL(); });
       this.$watch('favorites', (v) => storageSet(this.storage.favorites, JSON.stringify(v)));
       this.$watch('recents', (v) => storageSet(this.storage.recents, JSON.stringify(v)));
       this.$watch('collapsedGroups', (v) => storageSet(this.storage.collapsed, JSON.stringify(v)));
     },
     persistFilters() {
       storageSet(this.storage.filters, JSON.stringify({
-        q: this.q, tags: this.tags, sources: this.sources,
+        q: this.q, tags: this.tags, sources: this.sources, status: this.statusFilter,
       }));
     },
     syncURL() {
@@ -99,6 +104,7 @@ export function compassHome() {
       set('q', this.q);
       set('tags', this.tags.join(','));
       set('source', this.sources.join(','));
+      set('status', this.statusFilter);
       set('sort', this.sortMode === 'name' ? '' : this.sortMode);
       history.replaceState(null, '', url);
     },
@@ -131,7 +137,7 @@ export function compassHome() {
       return index >= start && index < start + this.groupsPerPage;
     },
     hasFilters() {
-      return !!(this.q || this.tags.length || this.sources.length);
+      return !!(this.q || this.tags.length || this.sources.length || this.statusFilter);
     },
     groupsTotalPages(totalGroups) {
       return Math.max(1, Math.ceil(totalGroups / this.groupsPerPage));
@@ -268,6 +274,7 @@ export function compassHome() {
       if (!service) return false;
       if (this.tags.length && !this.tags.some((t) => (service.tags || []).includes(t))) return false;
       if (this.sources.length && !this.sources.includes(service.sourceID)) return false;
+      if (this.statusFilter && service.status !== this.statusFilter) return false;
       if (!this.q) return true;
       const ids = this.searchResultIDs();
       return ids ? ids.has(id) : this.serviceMatchesText(service);
@@ -309,7 +316,7 @@ export function compassHome() {
       return services.map((s) => s.id);
     },
     filteredGroupIDs(ids) {
-      const key = JSON.stringify({ q: this.q, tags: this.tags, sources: this.sources, sort: this.sortMode, favorites: this.favorites });
+      const key = JSON.stringify({ q: this.q, tags: this.tags, sources: this.sources, status: this.statusFilter, sort: this.sortMode, favorites: this.favorites });
       const groupKey = ids.join(' ');
       if (this.groupCache.key !== key) {
         this.groupCache = { key, values: new Map() };
@@ -349,6 +356,7 @@ export function compassHome() {
       this.q = '';
       this.tags = [];
       this.sources = [];
+      this.statusFilter = '';
       this.resetGroupShown();
     },
     focusSearch(event) {
