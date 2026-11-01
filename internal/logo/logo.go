@@ -61,9 +61,11 @@ func Resolve(icon, name, source string) Logo {
 			URL:  selfhstBaseURL + strings.TrimPrefix(icon, "selfhst:") + ".svg",
 		}
 	case strings.Contains(icon, ":"):
+		// Iconify serves SVGs at /{prefix}/{name}.svg.
+		path := strings.Replace(strings.TrimPrefix(icon, "iconify:"), ":", "/", 1)
 		return Logo{
 			Kind: "image",
-			URL:  iconifyBaseURL + strings.TrimPrefix(icon, "iconify:") + ".svg",
+			URL:  iconifyBaseURL + path + ".svg",
 		}
 	default:
 		return Logo{Kind: "text", Text: initials(name)}
