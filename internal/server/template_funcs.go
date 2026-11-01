@@ -118,6 +118,8 @@ func sourceTypeLabel(sourceType string) string {
 		return "Kubernetes"
 	case compass.SourceTypeTailscale:
 		return "Tailscale"
+	case compass.SourceTypeNetbird:
+		return "NetBird"
 	case compass.SourceTypeStatic:
 		return "Static"
 	case compass.SourceTypeAPI:

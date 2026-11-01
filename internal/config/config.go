@@ -292,6 +292,7 @@ type SourceConfig struct {
 	Kubernetes      KubernetesConfig  `yaml:"kubernetes"`
 	Tailscale       TailscaleConfig   `yaml:"tailscale"`
 	Headscale       HeadscaleConfig   `yaml:"headscale"`
+	Netbird         NetbirdConfig     `yaml:"netbird"`
 	Docker          DockerConfig      `yaml:"docker"`
 }
 
@@ -403,6 +404,26 @@ type HeadscaleConfig struct {
 	// IncludeDevices toggles node discovery. Defaults to true.
 	IncludeDevices *bool `yaml:"include_devices"`
 	// DeviceTags are appended on top of Tags for every node, useful to
+	// distinguish them from regular services (e.g. ["node"]).
+	DeviceTags []string `yaml:"device_tags"`
+}
+
+type NetbirdConfig struct {
+	// APIURL is the NetBird management server root (e.g.
+	// https://netbird.example.com). Falls back to NETBIRD_API_URL, then to
+	// NetBird Cloud (https://api.netbird.io).
+	APIURL string `yaml:"api_url"`
+	// APIToken is a personal access token, ideally from a NetBird service
+	// user. Falls back to NETBIRD_API_TOKEN.
+	APIToken string `yaml:"api_token"`
+	// URLScheme is prefixed onto each peer's IP, or its DNS label when it has
+	// no IP, to build the service URL. Defaults to http.
+	URLScheme string `yaml:"url_scheme"`
+	// Tags applied to every discovered peer service.
+	Tags []string `yaml:"tags"`
+	// IncludeDevices toggles peer discovery. Defaults to true.
+	IncludeDevices *bool `yaml:"include_devices"`
+	// DeviceTags are appended on top of Tags for every peer, useful to
 	// distinguish them from regular services (e.g. ["node"]).
 	DeviceTags []string `yaml:"device_tags"`
 }

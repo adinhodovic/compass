@@ -11,7 +11,7 @@ Add a source and Compass renders what is exposed in a server-driven UI with
 source status, tags, metadata, and operator context. Search, filter, debug,
 and jump into services without maintaining a pile of hand-written cards.
 
-- Docker, Kubernetes, Tailscale, Headscale, static config, and JSON API
+- Docker, Kubernetes, Tailscale, Headscale, NetBird, static config, and JSON API
   sources.
 - Source health, refresh status, service metadata, panels, tags, and debug
   views.

@@ -46,7 +46,8 @@ dev: dev-up assets
 		echo "air not found on PATH; install with: go install github.com/air-verse/air@latest"; \
 		exit 1; \
 	}
-	@HEADSCALE_API_KEY="$$(cat deploy/dev/.headscale-key/apikey.txt)" air
+	@HEADSCALE_API_KEY="$$(cat deploy/dev/.headscale-key/apikey.txt)" \
+		NETBIRD_API_TOKEN="$$(cat deploy/dev/.netbird-key/token.txt)" air
 
 .PHONY: dev-up
 dev-up:

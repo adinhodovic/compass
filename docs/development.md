@@ -46,9 +46,10 @@ source something real to talk to:
 | `traefik` + `whoami` | Lets the Docker source exercise its Traefik label fallback. |
 | `consul` | Two services pre-registered from `consul-services.json`; exercises the `api` source's `items_mode: values`. |
 | `headscale` + `headscale-init` | Self-hosted tailnet. The init sidecar bootstraps a user, two demo nodes, and an API key on first run. |
+| `netbird` + `netbird-init` + `netbird-peer-*` | Self-hosted NetBird combined server. The init sidecar bootstraps an owner, a PAT, and a setup key on first run, and two userspace (netstack) peers join with that setup key. |
 
 `deploy/dev/compass.yaml` then wires up six sources (static, docker, caddy
-via api, consul via api, headscale, plus optional kubernetes/tailscale if
+via api, consul via api, headscale, netbird, plus optional kubernetes/tailscale if
 their creds are available) against that stack. After `make dev`, useful
 URLs:
 

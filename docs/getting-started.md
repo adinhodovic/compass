@@ -120,6 +120,7 @@ Multiple sources run side-by-side; the registry merges and deduplicates.
 | Kubernetes          | `kubernetes` | [Sources → Kubernetes](sources.md#kubernetes) |
 | Tailscale           | `tailscale`  | [Sources → Tailscale](sources.md#tailscale)   |
 | Headscale           | `headscale`  | [Sources → Headscale](sources.md#headscale)   |
+| NetBird             | `netbird`    | [Sources → NetBird](sources.md#netbird)       |
 | Anything HTTP+JSON  | `api`        | [Sources → API source](sources.md#api-source) |
 | Hand-curated        | `static`     | [Sources → Static](sources.md#static)         |
 

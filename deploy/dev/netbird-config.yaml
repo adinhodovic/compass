@@ -1,0 +1,21 @@
+# Minimal NetBird combined server (management + signal + relay + STUN +
+# embedded IdP) for the dev stack. Plain HTTP, no TLS: peers join over
+# the compose network and only the REST API is exposed to the host.
+server:
+  listenAddress: ":8080"
+  # Peers reach management/signal/relay at the compose service name.
+  exposedAddress: "http://netbird:8080"
+  healthcheckAddress: ":9000"
+  metricsPort: 9090
+  logLevel: "info"
+  logFile: "console"
+  authSecret: "compass-dev-relay-secret"
+  dataDir: "/var/lib/netbird"
+  disableAnonymousMetrics: true
+  disableGeoliteUpdate: true
+  auth:
+    # Only used for internal JWT validation; peers authenticate with a
+    # setup key and Compass with a PAT, so nothing hits this from outside.
+    issuer: "http://localhost:8080/oauth2"
+  store:
+    engine: "sqlite"

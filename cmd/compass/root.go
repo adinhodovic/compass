@@ -29,7 +29,7 @@ var (
 var rootCmd = &cobra.Command{
 	Use:   "compass",
 	Short: "Service-discovery dashboard for homelabs",
-	Long:  `Compass discovers services from your homelab (Docker, Kubernetes, Tailscale, Headscale, JSON APIs) and renders them with operational context.`,
+	Long:  `Compass discovers services from your homelab (Docker, Kubernetes, Tailscale, Headscale, NetBird, JSON APIs) and renders them with operational context.`,
 	RunE:  runCompass,
 }
 
