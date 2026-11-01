@@ -146,6 +146,7 @@ func runCompass(cmd *cobra.Command, args []string) error {
 	defer cancelWatch()
 	reg.Watch(watchCtx)
 
+	server.Version = version
 	handler := server.New(cfg, reg, logger)
 	httpServer := &http.Server{
 		Addr:              listenAddress,
