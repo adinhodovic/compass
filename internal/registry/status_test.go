@@ -93,6 +93,12 @@ func TestServicesMatchStatusByShape(t *testing.T) {
 			want: map[string]*bool{"Wiki": new(true), "Notes": new(false)},
 		},
 		{
+			name: "a check with a path also covers its host",
+			body: `[{"key":"https://grafana.home/api/health","up":false},
+				{"key":"https://plex.home/health/","up":true}]`,
+			want: map[string]*bool{"Grafana": new(false), "Plex": new(true), "Docs": nil},
+		},
+		{
 			name: "a URL beats the host for the same service",
 			body: `[{"key":"home.lan","up":false},{"key":"https://home.lan/wiki","up":true}]`,
 			want: map[string]*bool{"Wiki": new(true), "Notes": new(false)},
