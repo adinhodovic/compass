@@ -13,7 +13,7 @@ COPY tools ./tools
 COPY docs/assets/images ./docs/assets/images
 RUN npm run build
 
-FROM --platform=$BUILDPLATFORM golang:1.27.0-alpine AS builder
+FROM --platform=$BUILDPLATFORM golang:1.27.2-alpine AS builder
 
 RUN apk add --no-cache git ca-certificates tzdata
 
@@ -37,7 +37,7 @@ RUN --mount=type=cache,target=/go/pkg/mod,sharing=locked \
     -ldflags="-s -w -X 'main.version=${VERSION}' -X 'main.commit=${COMMIT}' -X 'main.buildTime=${BUILD_TIME}'" \
     -o compass ./cmd/compass
 
-FROM alpine:3.24.1
+FROM alpine:3.24.2
 
 RUN apk --no-cache add ca-certificates && \
     addgroup -g 1001 -S compass && \
