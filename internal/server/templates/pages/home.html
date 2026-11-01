@@ -246,10 +246,10 @@
 
 
   {{if .GroupNames}}
-  {{range $groupIndex, $groupName := .GroupNames}}
+  {{range $groupName := .GroupNames}}
   {{$groupServices := index $.Groups $groupName}}
   {{$ids := serviceIDs $groupServices}}
-  <section x-show="groupOnPage({{$groupIndex}}) && groupVisible({{$ids}})" x-transition>
+  <section x-show="groupVisible({{$ids}})" x-transition>
     <div class="grid gap-2 border-b border-base-300 pb-2 sm:flex sm:flex-wrap sm:items-center sm:justify-between sm:gap-3">
       <button type="button" class="flex cursor-pointer items-center gap-2 text-left grow min-w-0 rounded-lg px-2 py-1 -mx-2 hover:bg-base-200 transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary" data-group="{{$groupName}}" x-on:click="toggleGroup($el.dataset.group)" aria-label="Toggle {{groupLabel . $.GroupBy $groupServices}} group">
         <span class="transition-transform shrink-0 text-base-content/60" data-group="{{$groupName}}" x-bind:class="groupCollapsed($el.dataset.group) ? '-rotate-90' : ''">{{icon "lucide:chevron-down"}}</span>
@@ -318,10 +318,9 @@
       {{end}}
     </div>
     <div class="mt-4 flex justify-center" data-group="{{$groupName}}" x-show="!groupCollapsed($el.dataset.group) && groupHasMore({{$ids}}, $el.dataset.group)">
-      <button class="btn btn-sm btn-ghost gap-2" type="button" data-group="{{$groupName}}" x-on:click="showMore($el.dataset.group, {{$ids}})">
+      <button class="btn btn-sm btn-ghost gap-2" type="button" data-group="{{$groupName}}" x-on:click="showAll($el.dataset.group)">
         {{icon "lucide:chevron-down"}}
-        <span>Show <span x-text="Math.min(pageSize, groupHiddenCount({{$ids}}, '{{$groupName}}'))"></span> more</span>
-        <span class="text-base-content/60" x-text="'(' + groupHiddenCount({{$ids}}, '{{$groupName}}') + ' remaining)'"></span>
+        <span>Show all <span x-text="filteredGroupIDs({{$ids}}).length"></span></span>
       </button>
     </div>
   </section>
@@ -335,20 +334,6 @@
     </div>
   </div>
 
-  {{if gt (len .GroupNames) 3}}
-  <div class="flex justify-center mt-4" x-show="!hasFilters() && groupsTotalPages({{len .GroupNames}}) > 1">
-    <div class="join">
-      <button class="btn btn-sm join-item" type="button"
-              x-on:click="prevGroupsPage()"
-              x-bind:disabled="groupsPage <= 1">{{icon "lucide:chevron-left"}}Prev</button>
-      <span class="btn btn-sm join-item pointer-events-none cursor-default bg-base-100 text-base-content opacity-100" aria-live="polite"
-            x-text="groupsPageLabel({{len .GroupNames}})"></span>
-      <button class="btn btn-sm join-item" type="button"
-              x-on:click="nextGroupsPage({{len .GroupNames}})"
-              x-bind:disabled="groupsPage >= groupsTotalPages({{len .GroupNames}})">Next{{icon "lucide:chevron-right"}}</button>
-    </div>
-  </div>
-  {{end}}
   {{else}}
   <div role="alert" class="alert alert-info">
     {{icon "lucide:info"}}
