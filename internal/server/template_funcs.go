@@ -70,16 +70,35 @@ func commandIndex(b Base) template.JS {
 		Label    string `json:"label"`
 		Section  string `json:"section,omitempty"`
 		Keywords string `json:"keywords,omitempty"`
+		// URL is the service itself; Value stays the detail page.
+		URL      string `json:"url,omitempty"`
+		IconURL  string `json:"iconURL,omitempty"`
+		IconText string `json:"iconText,omitempty"`
+		Status   string `json:"status,omitempty"`
 	}
 	out := make([]item, 0, len(b.Services))
 	for _, s := range b.Services {
-		out = append(out, item{
+		entry := item{
 			Type:     "service",
 			Value:    "/services/" + s.ID,
 			Label:    s.Name,
 			Section:  sourceLabel(s.SourceType, s.Source),
 			Keywords: strings.Join(append([]string{s.Source, s.SourceType}, s.Tags...), " "),
-		})
+			URL:      s.URL,
+		}
+		if s.Status != nil {
+			entry.Status = "down"
+			if s.Status.Up {
+				entry.Status = "up"
+			}
+		}
+		resolved := logo.Resolve(s.Icon, s.Name, s.SourceType)
+		if resolved.Kind == "image" {
+			entry.IconURL = resolved.URL
+		} else {
+			entry.IconText = resolved.Text
+		}
+		out = append(out, entry)
 	}
 	for _, section := range b.Pages {
 		for _, p := range section.Pages {

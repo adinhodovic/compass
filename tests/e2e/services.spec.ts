@@ -41,6 +41,24 @@ test('keyboard shortcuts focus search and open command palette', async ({ page, 
   await expect(page.getByRole('link', { name: /Wiki/ })).toBeVisible();
 });
 
+test('command palette opens services and their detail pages', async ({ page, context }) => {
+  await context.route('https://wiki.example.test/**', (route) => route.fulfill({ body: 'wiki' }));
+  await page.goto('/services');
+
+  await page.getByRole('button', { name: 'Open command palette' }).first().click();
+  await page.locator(commandSearch).fill('wiki');
+  await expect(page.getByRole('img', { name: 'Down' }).last()).toBeVisible();
+
+  const popup = context.waitForEvent('page');
+  await page.locator(commandSearch).press('Enter');
+  await expect(await popup).toHaveURL('https://wiki.example.test/');
+
+  await page.getByRole('button', { name: 'Open command palette' }).first().click();
+  await page.locator(commandSearch).fill('wiki');
+  await page.locator(commandSearch).press('Shift+Enter');
+  await expect(page).toHaveURL(/\/services\/[^/]*wiki/);
+});
+
 test('source and tag chips apply filters', async ({ page }) => {
   await page.goto('/services');
 
