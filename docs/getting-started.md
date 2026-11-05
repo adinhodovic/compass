@@ -100,7 +100,7 @@ tags from the embedded [Catalog](catalog.md), so two fields (`name`,
 
 Browse to `http://localhost:8080/`.
 
-- Search from the dashboard or press `Ctrl+K` for the command palette.
+- Search from the dashboard or press `Ctrl+K` for the command palette. `Enter` opens the service, `Shift+Enter` its Compass detail page.
 - Pin a service with the star button.
 - Open `/debug` to see source health and the raw service data.
 - Open `/metrics` to scrape Compass with Prometheus.

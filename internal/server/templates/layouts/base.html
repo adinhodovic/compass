@@ -125,7 +125,7 @@
           <input id="command-search" x-ref="commandInput" type="search" class="grow" placeholder="Search services and pages" aria-label="Search services and pages" x-model="query"
             x-on:keydown.arrow-down.prevent="move(1)"
             x-on:keydown.arrow-up.prevent="move(-1)"
-            x-on:keydown.enter.prevent="commit()">
+            x-on:keydown.enter.prevent="commit($event.shiftKey)">
           <kbd class="kbd kbd-sm">esc</kbd>
         </label>
       </div>
@@ -138,17 +138,21 @@
                 <li>
                   <a class="gap-3"
                      x-bind:class="results().indexOf(item) === activeIndex ? 'bg-base-200' : ''"
+                     x-bind:data-command-active="results().indexOf(item) === activeIndex"
                      x-on:mouseenter="activeIndex = results().indexOf(item)"
-                     x-on:click.prevent="select(item)"
-                     href="#">
+                     x-on:click.prevent="select(item, $event.shiftKey)"
+                     x-bind:href="item.url || item.value">
                     <span class="text-base-content/60" x-show="item.type === 'page'" aria-hidden="true">
                       <svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"></path><path d="M14 2v4a2 2 0 0 0 2 2h4"></path><path d="M10 9H8"></path><path d="M16 13H8"></path><path d="M16 17H8"></path></svg>
                     </span>
-                    <span class="text-base-content/60" x-show="item.type !== 'page'" aria-hidden="true">
-                      <svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21 8-9-5-9 5 9 5 9-5Z"></path><path d="M3 8v8l9 5 9-5V8"></path><path d="M12 13v8"></path></svg>
-                    </span>
+                    <template x-if="item.type !== 'page' && item.iconURL">
+                      <span class="avatar" aria-hidden="true"><span class="w-5 rounded"><img :src="item.iconURL" alt="" class="object-contain" loading="lazy"></span></span>
+                    </template>
+                    <template x-if="item.type !== 'page' && !item.iconURL">
+                      <span class="avatar avatar-placeholder" aria-hidden="true"><span class="bg-neutral text-neutral-content w-5 rounded text-[10px]" x-text="item.iconText || item.label.charAt(0)"></span></span>
+                    </template>
                     <span class="min-w-0 flex-1 truncate" x-text="item.label"></span>
-                    <span class="badge badge-ghost badge-sm hidden sm:inline-flex" x-text="item.type"></span>
+                    <span class="status shrink-0" x-show="item.status" x-bind:class="item.status === 'up' ? 'status-success' : 'status-error'" role="img" x-bind:aria-label="item.status === 'up' ? 'Up' : 'Down'"></span>
                     <span class="hidden text-xs text-base-content/60 sm:inline" x-show="item.section" x-text="item.section"></span>
                   </a>
                 </li>
@@ -160,6 +164,11 @@
           <li class="menu-disabled px-4 py-3">No matches</li>
         </template>
       </ul>
+      <p class="hidden sm:flex flex-wrap items-center gap-x-4 gap-y-1 border-t border-base-300 px-2 pt-3 text-xs text-base-content/60">
+        <span><kbd class="kbd kbd-xs">↑</kbd> <kbd class="kbd kbd-xs">↓</kbd> move</span>
+        <span><kbd class="kbd kbd-xs">↵</kbd> open service</span>
+        <span><kbd class="kbd kbd-xs">⇧</kbd> <kbd class="kbd kbd-xs">↵</kbd> details</span>
+      </p>
     </div>
     <form method="dialog" class="modal-backdrop" x-on:click="open = false"><button>close</button></form>
   </dialog>

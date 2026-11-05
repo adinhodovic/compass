@@ -1064,6 +1064,43 @@ func TestCommandIndexIncludesServiceKeywords(t *testing.T) {
 	}
 }
 
+func TestCommandIndexIncludesServiceLaunchFields(t *testing.T) {
+	data := commandIndex(Base{Services: []compass.Service{
+		{
+			ID:     "grafana",
+			Name:   "Grafana",
+			URL:    "https://grafana.example.test",
+			Icon:   "https://cdn.example.test/grafana.svg",
+			Status: &compass.Status{Up: true},
+		},
+		{ID: "wiki", Name: "Wiki", Status: &compass.Status{Up: false}},
+		{ID: "plain", Name: "Plain"},
+	}})
+
+	var items []struct {
+		URL      string `json:"url"`
+		IconURL  string `json:"iconURL"`
+		IconText string `json:"iconText"`
+		Status   string `json:"status"`
+	}
+	if err := json.Unmarshal([]byte(data), &items); err != nil {
+		t.Fatalf("unmarshal command index: %v", err)
+	}
+	if len(items) != 3 {
+		t.Fatalf("expected 3 items, got %+v", items)
+	}
+	if items[0].URL != "https://grafana.example.test" || items[0].IconURL == "" ||
+		items[0].Status != "up" {
+		t.Fatalf("unexpected grafana item: %+v", items[0])
+	}
+	if items[1].URL != "" || items[1].IconText == "" || items[1].Status != "down" {
+		t.Fatalf("unexpected wiki item: %+v", items[1])
+	}
+	if items[2].Status != "" {
+		t.Fatalf("expected no status for unmatched service, got %+v", items[2])
+	}
+}
+
 func writePage(t *testing.T, dir string, name string, title string) {
 	t.Helper()
 	body := strings.Join([]string{"---", "title: " + title, "---", "", "# " + title, ""}, "\n")

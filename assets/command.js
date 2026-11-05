@@ -57,13 +57,24 @@ export function compassCommand() {
       const total = this.results().length;
       if (!total) return;
       this.activeIndex = (this.activeIndex + delta + total) % total;
+      this.$nextTick(() => {
+        const active = this.$root.querySelector('[data-command-active]');
+        if (active) active.scrollIntoView({ block: 'nearest' });
+      });
     },
-    select(item) {
+    // Services open their own URL in a new tab; pages, URL-less services,
+    // and Shift+Enter go to the Compass page for the item.
+    select(item, details = false) {
       if (!item) return;
+      if (item.url && !details) {
+        window.open(item.url, '_blank', 'noopener');
+        this.open = false;
+        return;
+      }
       window.location.href = item.value;
     },
-    commit() {
-      this.select(this.results()[this.activeIndex]);
+    commit(details = false) {
+      this.select(this.results()[this.activeIndex], details);
     }
   };
 }
