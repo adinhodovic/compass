@@ -1,6 +1,6 @@
 [project]
 site_name = "Compass"
-site_description = "Compass: homelab service discovery, catalog-backed metadata, and embedded UI."
+site_description = "Compass is a self-hosted homelab dashboard: a landing page for your services, dashboards, and documents, discovered automatically from Docker, Kubernetes, Tailscale, and NetBird."
 site_url = "https://adinhodovic.github.io/compass/"
 repo_url = "https://github.com/adinhodovic/compass"
 repo_name = "adinhodovic/compass"
