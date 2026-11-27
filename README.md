@@ -1,9 +1,9 @@
-<p align="center">
-  <img src="docs/assets/images/compass-logo.svg" alt="Compass" width="560">
-</p>
+<h1 align="center">
+  <img src="docs/assets/images/compass-logo.svg" alt="Compass: self-hosted homelab dashboard with automatic service discovery" width="560">
+</h1>
 
 <p align="center">
-  <strong>A landing page for your services, dashboards, and documents, discovered automatically from sources such as Docker, Kubernetes, and Tailscale.</strong>
+  <strong>A landing page for your services, dashboards, and documents, discovered automatically from sources such as Docker, Kubernetes, Tailscale, and NetBird.</strong>
 </p>
 
 <p align="center">
